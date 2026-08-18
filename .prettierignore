@@ -1,0 +1,23 @@
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Typescript output
+dist
+
+# Dependency directory
+node_modules
+
+# Vendor SDK binaries
+vendor
+
+# OSX
+.DS_Store
+
+# ESLint config
+.eslintrc.js
