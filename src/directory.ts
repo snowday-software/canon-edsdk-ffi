@@ -45,7 +45,7 @@ export class Directory {
     /** @param ref - An EDSDK directory item reference for a folder. */
     constructor(ref: any) {
         this.ref_ = ref;
-        throwIfError(edsdk.EdsRetain(this.ref_));
+        edsdk.EdsRetain(this.ref_);
         this.info_ = getDirectoryItemInfo(this.ref_);
         if (!this.info_.isFolder) {
             edsdk.EdsRelease(this.ref_);
@@ -59,14 +59,14 @@ export class Directory {
         try {
             info = getDirectoryItemInfo(ref);
         } catch {
-            throwIfError(edsdk.EdsRelease(ref));
+            edsdk.EdsRelease(ref);
             throw new Error('Failed to get child item info');
         }
         if (info.isFolder) {
             try {
                 return new Directory(ref);
             } catch {
-                throwIfError(edsdk.EdsRelease(ref));
+                edsdk.EdsRelease(ref);
                 throw new Error('Failed to create Directory');
             }
         }

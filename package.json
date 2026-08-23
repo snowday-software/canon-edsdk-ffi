@@ -1,6 +1,6 @@
 {
     "name": "canon-edsdk-ffi",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "private": true,
     "description": "Modern TypeScript FFI wrapper for the Canon EOS Digital SDK (EDSDK), built with Koffi.",
     "main": "dist/index.cjs",
@@ -30,7 +30,7 @@
         "test:watch": "vitest",
         "vendor:sync": "tsx scripts/vendor-sync.ts",
         "vendor:clean": "rimraf vendor/bin",
-        "example:skeleton": "tsx examples/camera-skeleton.ts"
+        "example:picture-test": "tsx examples/picture-test.ts"
     },
     "keywords": [
         "canon",

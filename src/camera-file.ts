@@ -63,7 +63,7 @@ export class CameraFile {
     /** @param ref - An EDSDK directory item reference for an image/audio file. */
     constructor(ref: any) {
         this.ref_ = ref;
-        throwIfError(edsdk.EdsRetain(this.ref_));
+        edsdk.EdsRetain(this.ref_);
         this.info_ = getDirectoryItemInfo(this.ref_);
     }
 

@@ -1,10 +1,25 @@
+/// <reference types="node" />
 import EDSDK from '../src/index.js';
+import type { ApiError, CameraFile } from '../src/index.js';
+import * as fs from 'fs';
+import * as path from 'path';
+
+let tmpRoot: string;
+let sessionId: string;
 
 EDSDK.cameraBrowser.setEventHandler((eventName, event) => {
+    if (eventName === 'DownloadRequest' && 'file' in event) {
+        const file = (event as any).file as CameraFile;
+        const dest = path.join(tmpRoot, `${sessionId}_${file.name}`);
+        const downloaded = file.downloadToFile(dest);
+        console.log(`[Download] -> ${downloaded}`);
+        return;
+    }
+
     if ('camera' in event) {
         console.log(`[Event] ${eventName} - ${event.camera.description}`);
     } else {
-        console.log(`[Error] ${eventName} - ${(event as EDSDK.ApiError).label}`);
+        console.log(`[Error] ${eventName} - ${(event as ApiError).label}`);
     }
 });
 
@@ -14,6 +29,12 @@ try {
         'Cameras:',
         EDSDK.cameraBrowser.getCameras().map((c) => c.description),
     );
+
+    tmpRoot = path.join(process.cwd(), 'tmp');
+    fs.mkdirSync(tmpRoot, { recursive: true });
+    const tmpRunDir = fs.mkdtempSync(path.join(tmpRoot, 'skeleton-'));
+    sessionId = path.basename(tmpRunDir).replace(/^skeleton-/, '');
+    fs.rmdirSync(tmpRunDir);
 
     const camera = EDSDK.cameraBrowser.getCamera();
     if (camera) {

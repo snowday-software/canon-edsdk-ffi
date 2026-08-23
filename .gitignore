@@ -49,6 +49,9 @@ web_modules/
 dist/
 *.tsbuildinfo
 
+# Example picture-test output
+tmp/
+
 # Canon SDK binaries and extracted SDKs
 vendor/
 

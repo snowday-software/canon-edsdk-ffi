@@ -203,8 +203,6 @@ export class Camera implements ICamera {
     }
 
     private initialize_() {
-        throwIfError(edsdk.EdsRetain(this.ref_));
-
         const info = koffi.alloc(EdsDeviceInfo, 1);
         try {
             throwIfError(edsdk.EdsGetDeviceInfo(this.ref_, info));

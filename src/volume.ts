@@ -53,7 +53,7 @@ export class Volume {
     /** @param ref - An EDSDK volume reference. */
     constructor(ref: any) {
         this.ref_ = ref;
-        throwIfError(edsdk.EdsRetain(this.ref_));
+        edsdk.EdsRetain(this.ref_);
         this.info_ = getVolumeInfo(this.ref_);
     }
 
