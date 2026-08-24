@@ -52,52 +52,60 @@ export { ApiIdentifier } from './values/api-identifier.js';
 export { ObjectEvent } from './values/object-event.js';
 export { StateEvent } from './values/state-event.js';
 
-import { Camera, CameraBrowser, cameraBrowser, watchCameras } from './camera.js';
-import { CameraProperty } from './property.js';
-import { CameraFile } from './camera-file.js';
-import { LiveViewImage } from './live-view-image.js';
-import { Volume } from './volume.js';
-import { Directory } from './directory.js';
-import { ApiError } from './api-error.js';
-import { Aperture } from './values/aperture.js';
-import { ShutterSpeed } from './values/shutter-speed.js';
-import { ISOSensitivity } from './values/iso-sensitivity.js';
-import { ExposureCompensation } from './values/exposure-compensation.js';
-import { ImageQuality } from './values/image-quality.js';
-import { OutputDevice } from './values/output-device.js';
-import { TimeZone } from './values/time-zone.js';
-import { FileFormat } from './values/file-format.js';
-import { Flag } from './values/flag.js';
-import { Option } from './values/option.js';
-import { ApiIdentifier } from './values/api-identifier.js';
-import { ObjectEvent } from './values/object-event.js';
-import { StateEvent } from './values/state-event.js';
+import * as camera from './camera.js';
+import * as property from './property.js';
+import * as cameraFile from './camera-file.js';
+import * as liveViewImage from './live-view-image.js';
+import * as volume from './volume.js';
+import * as directory from './directory.js';
+import * as apiError from './api-error.js';
+import * as aperture from './values/aperture.js';
+import * as shutterSpeed from './values/shutter-speed.js';
+import * as isoSensitivity from './values/iso-sensitivity.js';
+import * as exposureCompensation from './values/exposure-compensation.js';
+import * as imageQuality from './values/image-quality.js';
+import * as outputDevice from './values/output-device.js';
+import * as timeZone from './values/time-zone.js';
+import * as fileFormat from './values/file-format.js';
+import * as flag from './values/flag.js';
+import * as option from './values/option.js';
+import * as apiIdentifier from './values/api-identifier.js';
+import * as objectEvent from './values/object-event.js';
+import * as stateEvent from './values/state-event.js';
 
 /** Default namespace object exposing the entire public API. */
-const CameraApi = {
-    Camera,
-    CameraBrowser,
-    CameraProperty,
-    CameraFile,
-    LiveViewImage,
-    Volume,
-    Directory,
-    ApiError,
-    ApiIdentifier,
-    Aperture,
-    ShutterSpeed,
-    ISOSensitivity,
-    ExposureCompensation,
-    ImageQuality,
-    OutputDevice,
-    TimeZone,
-    FileFormat,
-    Flag,
-    Option,
-    ObjectEvent,
-    StateEvent,
-    cameraBrowser,
-    watchCameras,
-};
+namespace CameraApi {
+    export import Camera = camera.Camera;
+    export import CameraBrowser = camera.CameraBrowser;
+    export const cameraBrowser = camera.cameraBrowser;
+    export const watchCameras = camera.watchCameras;
+    export import CameraProperty = property.CameraProperty;
+    export import CameraFile = cameraFile.CameraFile;
+    export import LiveViewImage = liveViewImage.LiveViewImage;
+    export import Volume = volume.Volume;
+    export import Directory = directory.Directory;
+    export import ApiError = apiError.ApiError;
+    export import ApiIdentifier = apiIdentifier.ApiIdentifier;
+    export import Aperture = aperture.Aperture;
+    export import ShutterSpeed = shutterSpeed.ShutterSpeed;
+    export import ISOSensitivity = isoSensitivity.ISOSensitivity;
+    export import ExposureCompensation = exposureCompensation.ExposureCompensation;
+    export import ImageQuality = imageQuality.ImageQuality;
+    export import OutputDevice = outputDevice.OutputDevice;
+    export import TimeZone = timeZone.TimeZone;
+    export import FileFormat = fileFormat.FileFormat;
+    export import Flag = flag.Flag;
+    export import Option = option.Option;
+    export import ObjectEvent = objectEvent.ObjectEvent;
+    export import StateEvent = stateEvent.StateEvent;
+    export type CameraDeviceEvent = camera.CameraDeviceEvent;
+    export type PropertyChangeEvent = camera.PropertyChangeEvent;
+    export type FileChangeEvent = camera.FileChangeEvent;
+    export type DirectoryChangeEvent = camera.DirectoryChangeEvent;
+    export type VolumeChangeEvent = camera.VolumeChangeEvent;
+    export type ObjectChangeEvent = camera.ObjectChangeEvent;
+    export type StateChangeEvent = camera.StateChangeEvent;
+    export type EventCallback = camera.EventCallback;
+}
 
 export default CameraApi;

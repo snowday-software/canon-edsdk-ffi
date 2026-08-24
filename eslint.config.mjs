@@ -24,6 +24,12 @@ export default tseslint.config(
         },
     },
     {
+        files: ['src/index.ts'],
+        rules: {
+            '@typescript-eslint/no-namespace': 'off',
+        },
+    },
+    {
         ignores: ['dist/**', 'node_modules/**', 'vendor/**', 'test/**', 'examples/**', '*.config.*', '*.cjs'],
     },
 );
