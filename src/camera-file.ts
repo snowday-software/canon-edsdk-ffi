@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
@@ -154,26 +155,19 @@ export class CameraFile {
 
     /** Downloads the file into memory and returns it as a base64 string. */
     downloadToString(): string {
-        const streamPtr = createOutputPointer();
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-edsdk-'));
         try {
-            throwIfError(edsdk.EdsCreateMemoryStream(0, streamPtr));
-            const stream = readOutputPointer(streamPtr);
-            throwIfError(edsdk.EdsDownload(this.ref_, this.info_.size, stream));
-            throwIfError(edsdk.EdsDownloadComplete(this.ref_));
-            const b64 = readStreamToBase64(stream);
+            const tmpPath = path.join(tmpDir, this.name);
+            const downloaded = this.downloadToFile(tmpPath);
+            const b64 = fs.readFileSync(downloaded).toString('base64');
             this.isDownloaded_ = true;
             return b64;
         } finally {
-            const stream = readOutputPointer(streamPtr);
-            freeOutputPointer(streamPtr);
-            if (stream !== 0n && stream !== null) {
-                try {
-                    edsdk.EdsRelease(stream);
-                } catch {
-                    // ignore
-                }
+            try {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            } catch {
+                // ignore
             }
-            this.dispose_();
         }
     }
 

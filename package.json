@@ -28,6 +28,7 @@
         "format:fix": "prettier --write .",
         "test": "vitest run",
         "test:watch": "vitest",
+        "test:camera": "vitest run --config vitest.real-camera.config.ts",
         "vendor:sync": "tsx scripts/vendor-sync.ts",
         "vendor:clean": "rimraf vendor/bin",
         "example:picture-test": "tsx examples/picture-test.ts"
