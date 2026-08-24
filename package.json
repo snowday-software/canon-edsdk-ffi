@@ -29,6 +29,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:camera": "vitest run --config vitest.real-camera.config.ts",
+        "test:ui-lock:interactive": "tsx test/real-camera/ui-lock.interactive.ts",
         "vendor:sync": "tsx scripts/vendor-sync.ts",
         "vendor:clean": "rimraf vendor/bin",
         "example:picture-test": "tsx examples/picture-test.ts"
