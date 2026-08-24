@@ -422,10 +422,7 @@ export class Camera implements ICamera {
         const current = prop.value as number | { value: number };
         const currentValue = typeof current === 'number' ? current : (current as any).value;
         const nextValue = currentValue | EvfOutputDevice.PC;
-        if (nextValue !== currentValue) {
-            prop.value = nextValue;
-        }
-        this.updateLiveViewStatus_();
+        prop.value = nextValue;
     }
 
     /** Disables live view output to the PC. */
@@ -440,7 +437,6 @@ export class Camera implements ICamera {
         if (nextValue !== currentValue) {
             prop.value = nextValue;
         }
-        this.updateLiveViewStatus_();
     }
 
     /** Returns `true` when live view output is currently active. */
@@ -449,9 +445,9 @@ export class Camera implements ICamera {
     }
 
     /** Downloads the current live view frame as a base64 JPEG data URL. */
-    downloadLiveViewImage(): string {
+    downloadLiveViewImage(): string | undefined {
         const img = this.getLiveViewImage();
-        return img ? img.getDataURL() : '';
+        return img ? img.getDataURL() : undefined;
     }
 
     /** Creates a `LiveViewImage` for the current live view frame. */

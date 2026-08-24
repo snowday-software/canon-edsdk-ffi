@@ -32,17 +32,28 @@ function getDirectoryItemInfo(ref: any) {
 }
 
 function readStreamToBase64(streamRef: any): string {
-    const length: [number | bigint] = [0];
-    throwIfError(edsdk.EdsGetLength(streamRef, length));
-    const n = Number(length[0]);
-    if (n === 0) {
-        return '';
+    const lengthPtr = koffi.alloc('uint64_t', 1);
+    try {
+        throwIfError(edsdk.EdsGetLength(streamRef, lengthPtr));
+        const n = Number(koffi.decode(lengthPtr, 'uint64_t'));
+        if (n === 0) {
+            return '';
+        }
+        const buffer = Buffer.alloc(n);
+        const outReadPtr = koffi.alloc('uint64_t', 1);
+        try {
+            throwIfError(edsdk.EdsRead(streamRef, BigInt(n), buffer, outReadPtr));
+            const read = Number(koffi.decode(outReadPtr, 'uint64_t'));
+            if (read === 0) {
+                return '';
+            }
+            return buffer.toString('base64', 0, read);
+        } finally {
+            koffi.free(outReadPtr);
+        }
+    } finally {
+        koffi.free(lengthPtr);
     }
-    const buffer = Buffer.alloc(n);
-    const outRead: [number | bigint] = [0];
-    throwIfError(edsdk.EdsRead(streamRef, length[0], buffer, outRead));
-    const read = Number(outRead[0]);
-    return buffer.toString('base64', 0, read);
 }
 
 /**

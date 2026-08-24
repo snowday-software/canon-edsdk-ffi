@@ -171,18 +171,30 @@ export class LiveViewImage {
     }
 
     /** Returns the live view frame as a JPEG base64 data URL. */
-    getDataURL(): string {
+    getDataURL(): string | undefined {
         this.ensureNotDisposed_();
-        const length: [number | bigint] = [0];
-        throwIfError(edsdk.EdsGetLength(this.streamRef_, length));
-        const n = Number(length[0]);
-        const buffer = Buffer.alloc(n);
-        const outRead: [number | bigint] = [0];
-        throwIfError(edsdk.EdsRead(this.streamRef_, length[0], buffer, outRead));
-        const read = Number(outRead[0]);
-        const b64 = buffer.toString('base64', 0, read);
-        this.dispose();
-        return `data:image/jpeg;base64,${b64}`;
+        const lengthBuf = Buffer.alloc(8);
+        throwIfError(edsdk.EdsGetLength(this.streamRef_, lengthBuf as any));
+        const n = Number(koffi.decode(lengthBuf, 'uint64_t'));
+        if (n === 0) {
+            this.dispose();
+            return undefined;
+        }
+        const pointerOut = createOutputPointer();
+        try {
+            throwIfError(edsdk.EdsGetPointer(this.streamRef_, pointerOut));
+            const pointer = readOutputPointer(pointerOut);
+            if (pointer === 0n || pointer === null || pointer === undefined) {
+                this.dispose();
+                return undefined;
+            }
+            const bytes = koffi.decode(pointer, 'uint8_t', n);
+            const b64 = Buffer.from(bytes as Uint8Array).toString('base64');
+            this.dispose();
+            return `data:image/jpeg;base64,${b64}`;
+        } finally {
+            freeOutputPointer(pointerOut);
+        }
     }
 
     /** Releases the live view image and stream references. */
