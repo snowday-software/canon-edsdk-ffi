@@ -37,6 +37,9 @@ export { CameraFile } from './camera-file.js';
 export { LiveViewImage } from './live-view-image.js';
 export { Volume } from './volume.js';
 export { Directory, type DirectoryEntry } from './directory.js';
+export { Stream, type StreamHandlers, type ProgressCallback } from './stream.js';
+export { CameraImage, type ImageInfo } from './camera-image.js';
+export { FlashSettings } from './flash-settings.js';
 export { Aperture } from './values/aperture.js';
 export { ShutterSpeed } from './values/shutter-speed.js';
 export { ISOSensitivity } from './values/iso-sensitivity.js';
@@ -58,6 +61,9 @@ import * as cameraFile from './camera-file.js';
 import * as liveViewImage from './live-view-image.js';
 import * as volume from './volume.js';
 import * as directory from './directory.js';
+import * as stream from './stream.js';
+import * as cameraImage from './camera-image.js';
+import * as flashSettings from './flash-settings.js';
 import * as apiError from './api-error.js';
 import * as aperture from './values/aperture.js';
 import * as shutterSpeed from './values/shutter-speed.js';
@@ -84,6 +90,9 @@ namespace CameraApi {
     export import LiveViewImage = liveViewImage.LiveViewImage;
     export import Volume = volume.Volume;
     export import Directory = directory.Directory;
+    export import Stream = stream.Stream;
+    export import CameraImage = cameraImage.CameraImage;
+    export import FlashSettings = flashSettings.FlashSettings;
     export import ApiError = apiError.ApiError;
     export import ApiIdentifier = apiIdentifier.ApiIdentifier;
     export import Aperture = aperture.Aperture;
@@ -106,6 +115,9 @@ namespace CameraApi {
     export type ObjectChangeEvent = camera.ObjectChangeEvent;
     export type StateChangeEvent = camera.StateChangeEvent;
     export type EventCallback = camera.EventCallback;
+    export type StreamHandlers = stream.StreamHandlers;
+    export type ProgressCallback = stream.ProgressCallback;
+    export type ImageInfo = cameraImage.ImageInfo;
 }
 
 export default CameraApi;

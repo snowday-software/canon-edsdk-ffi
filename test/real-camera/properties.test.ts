@@ -62,7 +62,8 @@ describe('camera properties', () => {
     it('round-trips PictureStyle to 0x81 (Standard)', () => {
         getCamera().setProperty(EDSDK.CameraProperty.ID.PictureStyle, 0x81);
         const prop = getCamera().getProperty(EDSDK.CameraProperty.ID.PictureStyle);
-        expect(prop.value).toBe(0x81);
+        expect(prop.value.value).toBe(0x81);
+        expect(prop.value.label).toBe('PictureStyle.Standard');
     });
 
     it('emits PropertyChangeValue after a setting change', async () => {

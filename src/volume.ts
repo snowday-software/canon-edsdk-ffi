@@ -57,6 +57,11 @@ export class Volume {
         this.info_ = getVolumeInfo(this.ref_);
     }
 
+    /** Returns the underlying EDSDK volume reference. */
+    getEdsReference(): any {
+        return this.ref_;
+    }
+
     /** Volume label, such as the memory card name. */
     get label(): string {
         return readString(this.info_.szVolumeLabel);
@@ -94,6 +99,30 @@ export class Volume {
         const count: [number] = [0];
         throwIfError(edsdk.EdsGetChildCount(this.ref_, count));
         return count[0];
+    }
+
+    /** Formats the memory card (`EdsFormatVolume`). This erases all data. */
+    format(): void {
+        throwIfError(edsdk.EdsFormatVolume(this.ref_));
+    }
+
+    /** Refreshes the cached volume info from the camera. */
+    refreshInfo(): void {
+        this.info_ = getVolumeInfo(this.ref_);
+    }
+
+    /**
+     * Returns the parent reference of this volume — the camera
+     * (`EdsGetParent`). Compare with `camera.getEdsReference()`.
+     */
+    getParent(): any {
+        const ptr = createOutputPointer();
+        try {
+            throwIfError(edsdk.EdsGetParent(this.ref_, ptr));
+            return readOutputPointer(ptr);
+        } finally {
+            freeOutputPointer(ptr);
+        }
     }
 
     /** Returns the files and folders stored on this volume. */

@@ -135,15 +135,73 @@ sync script. You can also copy the files manually.
 
 ## API overview
 
-- `Camera` — connect, disconnect, get/set properties, send commands, capture
-  pictures, control live view, enumerate volumes.
+- `Camera` — connect, disconnect, get/set properties, send commands and status
+  commands, capture pictures (including bulb and shutter-button control),
+  control live view and EVF frame points, enumerate volumes, transfer camera
+  settings (CSD) data, manage flash settings, format volumes, set host
+  capacity, and drive power-zoom lenses.
 - `CameraBrowser` — SDK lifecycle, camera enumeration, event dispatch.
-- `CameraFile` — download captured images and thumbnails.
-- `LiveViewImage` — create and download EVF (live view) frames.
-- `Volume` / `Directory` — navigate camera storage.
+- `CameraFile` — download captured images and thumbnails to paths, streams,
+  or buffers; read/write file attributes and metadata; delete items; walk to
+  the parent volume/folder.
+- `LiveViewImage` — create and download EVF (live view) frames as JPEG
+  bytes or data URLs; read zoom, histogram, and coordinate properties.
+- `Volume` / `Directory` — navigate, format, and manage camera storage,
+  including file attributes and parent traversal.
+- `Stream` — file streams (`openFile`, `openFileEx`), memory streams
+  (`inMemory`, `fromBuffer`), custom callback streams (`fromHandlers`),
+  seek/read/write/copy, and progress callbacks.
+- `CameraImage` — open images from files, buffers, or streams; query image
+  info; extract regions in a target format; access image properties.
+- `FlashSettings` — access flash-related properties via `EdsFlashRef`.
 - `CameraProperty` and value classes (`Aperture`, `ShutterSpeed`,
   `ISOSensitivity`, `ExposureCompensation`, `ImageQuality`, `Option`, etc.).
 - `watchCameras` — simple interval-based SDK event pump.
+- `edsdkConstants` — generated constants for every EDSDK enum group
+  (`PropertyID`, `ErrorCode`, `AEMode`, `WhiteBalance`, `ImageType`,
+  `ObjectFormat`, `EvfAFMode`, `StroboMode`, `SeekOrigin`, `ProgressOption`,
+  and more).
+- `edsdk` / `call` — raw FFI bindings for the complete EDSDK API surface,
+  including `EdsGetPropertyDescEx`, `EdsCreateStream`, `EdsSetProgressCallback`,
+  `EdsSetMetaImage`, `EdsGetCsdFileData`/`EdsSetCsdFileData`, file attributes,
+  and `EdsSetFramePoint`.
+
+### Events
+
+All EDSDK object events are mapped to high-level event names:
+
+| EDSDK object event                                    | Event name                       |
+| ----------------------------------------------------- | -------------------------------- |
+| `DirItemRequestTransfer` / `DirItemRequestTransferDT` | `DownloadRequest`                |
+| `DirItemCancelTransferDT`                             | `DownloadCancel`                 |
+| `DirItemCreated`                                      | `FileCreate` / `DirectoryCreate` |
+| `DirItemRemoved`                                      | `FileRemove` / `DirectoryRemove` |
+| `DirItemInfoChanged` / `DirItemContentChanged`        | `FileChange` / `DirectoryChange` |
+| `FolderUpdateItems`                                   | `DirectoryChange`                |
+| `VolumeAdded` / `VolumeRemoved`                       | `VolumeAdd` / `VolumeRemove`     |
+| `VolumeInfoChanged` / `VolumeUpdateItems`             | `VolumeChange`                   |
+| anything else                                         | `ObjectChange`                   |
+
+State events are surfaced as `StateChange` and include the raw `inEventData`
+in `event.data`. Live view start/stop are emitted as `LiveViewStart` /
+`LiveViewStop` when the EVF output device changes.
+
+`CameraProperty.ID` also carries legacy aliases used by the original
+`node-canon-edsdk` API (`JpegQuality`, `FlashCompensation`, `DepthOfField`,
+`PictureStyleDescription`, `TemperatureStatus`, `CFn`, `MyMenu`, and
+`Evf_FocusAid`).
+
+### SDK coverage and platform notes
+
+Bindings and constants are generated against Canon EDSDK **v13.20.21** (see
+`vendor/sdk/`). All documented `EDSDK.h` entry points are bound, plus the
+header-only `EdsCreateStream`/`EdsIStream` API. Platform caveats:
+
+- `EdsCreateFileStreamEx` takes a `WCHAR*` filename on Windows (handled
+  automatically by `Stream.openFileEx`) and a `CFURLRef` on macOS, which has
+  no Node-compatible equivalent — use `Stream.openFile` there.
+- `EdsCreateStream` is usable on all platforms through the callback vtable
+  (`Stream.fromHandlers`), but is undocumented by Canon.
 
 ## Scripts
 

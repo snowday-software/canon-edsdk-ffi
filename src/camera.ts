@@ -29,6 +29,8 @@ import { Volume } from './volume.js';
 import { Directory } from './directory.js';
 import { ObjectEvent as ObjectEventValue } from './values/object-event.js';
 import { StateEvent as StateEventValue } from './values/state-event.js';
+import type { Stream } from './stream.js';
+import { FlashSettings } from './flash-settings.js';
 
 function throwIfError(code: number): void {
     if (code !== ErrorCode.OK) {
@@ -73,6 +75,8 @@ export interface ObjectChangeEvent extends CameraDeviceEvent {
 
 export interface StateChangeEvent extends CameraDeviceEvent {
     stateEvent: StateEventValue;
+    /** Raw `inEventData` reported by the SDK for this state event. */
+    data?: number;
 }
 
 export type EventCallback = (eventName: string, event: CameraDeviceEvent | ApiError) => void;
@@ -112,8 +116,15 @@ export class Camera implements ICamera {
         | 'PropertyChangeOptions'
         | 'PropertyChangeValue'
         | 'DownloadRequest'
+        | 'DownloadCancel'
         | 'FileCreate'
+        | 'FileRemove'
+        | 'FileChange'
         | 'DirectoryCreate'
+        | 'DirectoryRemove'
+        | 'DirectoryChange'
+        | 'VolumeAdd'
+        | 'VolumeRemove'
         | 'VolumeChange'
         | 'ObjectChange'
         | 'Error',
@@ -121,10 +132,15 @@ export class Camera implements ICamera {
     > = {
         CameraConnect: 'CameraConnect',
         CameraDisconnect: 'CameraDisconnect',
+        DirectoryChange: 'DirectoryChange',
         DirectoryCreate: 'DirectoryCreate',
+        DirectoryRemove: 'DirectoryRemove',
+        DownloadCancel: 'DownloadCancel',
         DownloadRequest: 'DownloadRequest',
         Error: 'Error',
+        FileChange: 'FileChange',
         FileCreate: 'FileCreate',
+        FileRemove: 'FileRemove',
         KeepAlive: 'KeepAlive',
         LiveViewStart: 'LiveViewStart',
         LiveViewStop: 'LiveViewStop',
@@ -132,7 +148,9 @@ export class Camera implements ICamera {
         PropertyChangeOptions: 'PropertyChangeOptions',
         PropertyChangeValue: 'PropertyChangeValue',
         StateChange: 'StateChange',
+        VolumeAdd: 'VolumeAdd',
         VolumeChange: 'VolumeChange',
+        VolumeRemove: 'VolumeRemove',
     };
 
     static readonly Command: Record<
@@ -413,6 +431,152 @@ export class Camera implements ICamera {
         throwIfError(edsdk.EdsSendStatusCommand(this.ref_, CameraStatusCommand.UIUnLock, 0));
     }
 
+    /**
+     * Sends a low-level camera status command.
+     *
+     * @param command - A `CameraStatusCommand` value.
+     * @param parameter - Command-specific parameter.
+     */
+    sendStatusCommand(command: number, parameter = 0) {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(edsdk.EdsSendStatusCommand(this.ref_, command, parameter));
+    }
+
+    /**
+     * Notifies the camera of available host disk space (`EdsSetCapacity`).
+     *
+     * Required after setting `SaveTo` to `Host` so the camera knows it can
+     * write images to the computer.
+     */
+    setCapacity(capacity?: { numberOfFreeClusters?: number; bytesPerSector?: number; reset?: boolean }) {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(
+            edsdk.EdsSetCapacity(this.ref_, {
+                numberOfFreeClusters: capacity?.numberOfFreeClusters ?? 0x7fffffff,
+                bytesPerSector: capacity?.bytesPerSector ?? 0x1000,
+                reset: capacity?.reset === false ? 0 : 1,
+            }),
+        );
+    }
+
+    /** Creates a new folder on the camera memory card (`EdsCreateFolder`). */
+    createFolder() {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(edsdk.EdsCreateFolder(this.ref_));
+    }
+
+    /**
+     * Creates a flash settings object for reading flash-related properties
+     * (`EdsCreateFlashSettingRef`). Call `dispose()` on it when done.
+     */
+    getFlashSettings(): FlashSettings {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        return new FlashSettings(this);
+    }
+
+    /**
+     * Positions the live-view AF/zoom frame (`EdsSetFramePoint`).
+     *
+     * @param point - Frame position in live-view coordinates.
+     * @param lockAfFrame - When `true`, locks the AF frame at that position.
+     */
+    setFramePoint(point: { x: number; y: number }, lockAfFrame = false) {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(edsdk.EdsSetFramePoint(this.ref_, { x: point.x, y: point.y }, lockAfFrame));
+    }
+
+    /** Convenience: presses the shutter button (`PressShutterButton` command). */
+    pressShutterButton(mode: number = ShutterButton.Completely) {
+        this.sendCommand(CameraCommand.PressShutterButton, mode);
+    }
+
+    /** Convenience: starts a bulb exposure (`BulbStart` command). */
+    bulbStart() {
+        this.sendCommand(CameraCommand.BulbStart, 0);
+    }
+
+    /** Convenience: ends a bulb exposure (`BulbEnd` command). */
+    bulbEnd() {
+        this.sendCommand(CameraCommand.BulbEnd, 0);
+    }
+
+    /** Convenience: drives the focus lens during live view (`DriveLensEvf`). */
+    driveLensEvf(direction: number) {
+        this.sendCommand(CameraCommand.DriveLensEvf, direction);
+    }
+
+    /** Convenience: starts/stops live-view AF (`DoEvfAf` command). */
+    driveEvfAf(active: boolean) {
+        this.sendCommand(CameraCommand.DoEvfAf, active ? 1 : 0);
+    }
+
+    /** Convenience: sets white balance by clicking a live-view point. */
+    clickWhiteBalanceEvf(x: number, y: number) {
+        this.sendCommand(CameraCommand.DoClickWBEvf, (y << 16) | (x & 0xffff));
+    }
+
+    /** Convenience: extends the camera's auto shut-down timer. */
+    extendShutdownTimer() {
+        this.sendCommand(CameraCommand.ExtendShutDownTimer, 0);
+    }
+
+    /** Convenience: requests the camera roll/pitch level data. */
+    requestRollPitchLevel() {
+        this.sendCommand(CameraCommand.RequestRollPitchLevel, 0);
+    }
+
+    /** Convenience: requests sensor cleaning (`RequestSensorCleaning`). */
+    requestSensorCleaning() {
+        this.sendCommand(CameraCommand.RequestSensorCleaning, 0);
+    }
+
+    /** Convenience: drives a power-zoom lens (`DrivePowerZoom` command). */
+    drivePowerZoom(mode: number) {
+        this.sendCommand(CameraCommand.DrivePowerZoom, mode);
+    }
+
+    /** Convenience: toggles movie-mode selection (`MovieSelectSwON/OFF`). */
+    setMovieSelectSwitch(on: boolean) {
+        this.sendCommand(on ? CameraCommand.MovieSelectSwON : CameraCommand.MovieSelectSwOFF, 0);
+    }
+
+    /** Convenience: sets remote shooting mode (`SetRemoteShootingMode`). */
+    setRemoteShootingMode(mode: number) {
+        this.sendCommand(CameraCommand.SetRemoteShootingMode, mode);
+    }
+
+    /**
+     * Downloads the camera settings (CSD) file into a stream
+     * (`EdsGetCsdFileData`).
+     */
+    getCsdFileData(stream: Stream): void {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(edsdk.EdsGetCsdFileData(this.ref_, stream.getEdsReference()));
+    }
+
+    /**
+     * Uploads camera settings (CSD) data to the camera
+     * (`EdsSetCsdFileData`).
+     */
+    setCsdFileData(data: Buffer | Uint8Array): void {
+        if (!this.connected_) {
+            throwIfError(ErrorCode.SESSION_NOT_OPEN);
+        }
+        throwIfError(edsdk.EdsSetCsdFileData(this.ref_, data.byteLength, data));
+    }
+
     /** Enables live view output to the PC by setting the EVF output device. */
     startLiveView() {
         if (!this.connected_) {
@@ -514,7 +678,7 @@ export class Camera implements ICamera {
         }
     }
 
-    private handleStateEvent_(inEvent: number, _inEventData: number): number {
+    private handleStateEvent_(inEvent: number, inEventData: number): number {
         try {
             if (inEvent === StateEvent.Shutdown) {
                 this.disconnect();
@@ -532,6 +696,7 @@ export class Camera implements ICamera {
             this.emit_('StateChange', {
                 camera: this,
                 stateEvent: new StateEventValue(inEvent),
+                data: inEventData,
             });
         } catch (err) {
             this.emitError_(err);
@@ -558,37 +723,81 @@ export class Camera implements ICamera {
         return ErrorCode.OK;
     }
 
+    private wrapDirItem_(inRef: any): { file?: CameraFile; directory?: Directory } | undefined {
+        const info = koffi.alloc(EdsDirectoryItemInfo, 1);
+        try {
+            if (edsdk.EdsGetDirectoryItemInfo(inRef, info) !== ErrorCode.OK) {
+                return undefined;
+            }
+            const decoded = koffi.decode(info, 'EdsDirectoryItemInfo');
+            if (decoded.isFolder) {
+                return { directory: new Directory(inRef) };
+            }
+            return { file: new CameraFile(inRef) };
+        } finally {
+            koffi.free(info);
+        }
+    }
+
     private handleObjectEvent_(inEvent: number, inRef: any): number {
         try {
             let eventName: string | undefined;
             let data: any;
+            const objectEvent = new ObjectEventValue(inEvent);
             switch (inEvent) {
-                case ObjectEvent.DirItemRequestTransfer: {
+                case ObjectEvent.DirItemRequestTransfer:
+                case ObjectEvent.DirItemRequestTransferDT: {
                     eventName = 'DownloadRequest';
-                    data = { file: new CameraFile(inRef) };
+                    data = { file: new CameraFile(inRef), objectEvent };
                     break;
                 }
-                case ObjectEvent.DirItemCreated: {
-                    const info = koffi.alloc(EdsDirectoryItemInfo, 1);
+                case ObjectEvent.DirItemCancelTransferDT: {
+                    eventName = 'DownloadCancel';
+                    data = { file: new CameraFile(inRef), objectEvent };
+                    break;
+                }
+                case ObjectEvent.DirItemCreated:
+                case ObjectEvent.DirItemRemoved:
+                case ObjectEvent.DirItemInfoChanged:
+                case ObjectEvent.DirItemContentChanged: {
+                    const wrapped = this.wrapDirItem_(inRef);
+                    if (inEvent === ObjectEvent.DirItemCreated) {
+                        eventName = wrapped?.directory ? 'DirectoryCreate' : 'FileCreate';
+                    } else if (inEvent === ObjectEvent.DirItemRemoved) {
+                        eventName = wrapped?.directory ? 'DirectoryRemove' : 'FileRemove';
+                    } else {
+                        eventName = wrapped?.directory ? 'DirectoryChange' : 'FileChange';
+                    }
+                    // removed items may fail info lookup; emit without a wrapper
+                    data = { ...(wrapped ?? {}), objectEvent };
+                    break;
+                }
+                case ObjectEvent.FolderUpdateItems: {
+                    eventName = 'DirectoryChange';
+                    data = { directory: new Directory(inRef), objectEvent };
+                    break;
+                }
+                case ObjectEvent.VolumeAdded:
+                case ObjectEvent.VolumeRemoved:
+                case ObjectEvent.VolumeInfoChanged:
+                case ObjectEvent.VolumeUpdateItems: {
+                    eventName =
+                        inEvent === ObjectEvent.VolumeAdded
+                            ? 'VolumeAdd'
+                            : inEvent === ObjectEvent.VolumeRemoved
+                              ? 'VolumeRemove'
+                              : 'VolumeChange';
                     try {
-                        if (edsdk.EdsGetDirectoryItemInfo(inRef, info) === ErrorCode.OK) {
-                            const decoded = koffi.decode(info, 'EdsDirectoryItemInfo');
-                            if (decoded.isFolder) {
-                                eventName = 'DirectoryCreate';
-                                data = { directory: new Directory(inRef) };
-                            } else {
-                                eventName = 'FileCreate';
-                                data = { file: new CameraFile(inRef) };
-                            }
-                        }
-                    } finally {
-                        koffi.free(info);
+                        data = { volume: new Volume(inRef), objectEvent };
+                    } catch {
+                        // removed volume refs may no longer be readable
+                        data = { objectEvent };
                     }
                     break;
                 }
                 default: {
                     eventName = 'ObjectChange';
-                    data = { objectEvent: new ObjectEventValue(inEvent) };
+                    data = { objectEvent };
                 }
             }
             if (eventName) {
@@ -635,8 +844,15 @@ export class CameraBrowser {
         | 'PropertyChangeOptions'
         | 'PropertyChangeValue'
         | 'DownloadRequest'
+        | 'DownloadCancel'
         | 'FileCreate'
+        | 'FileRemove'
+        | 'FileChange'
         | 'DirectoryCreate'
+        | 'DirectoryRemove'
+        | 'DirectoryChange'
+        | 'VolumeAdd'
+        | 'VolumeRemove'
         | 'VolumeChange'
         | 'ObjectChange'
         | 'Error',
@@ -646,10 +862,15 @@ export class CameraBrowser {
         CameraConnect: 'CameraConnect',
         CameraDisconnect: 'CameraDisconnect',
         CameraRemove: 'CameraRemove',
+        DirectoryChange: 'DirectoryChange',
         DirectoryCreate: 'DirectoryCreate',
+        DirectoryRemove: 'DirectoryRemove',
+        DownloadCancel: 'DownloadCancel',
         DownloadRequest: 'DownloadRequest',
         Error: 'Error',
+        FileChange: 'FileChange',
         FileCreate: 'FileCreate',
+        FileRemove: 'FileRemove',
         KeepAlive: 'KeepAlive',
         LiveViewStart: 'LiveViewStart',
         LiveViewStop: 'LiveViewStop',
@@ -657,7 +878,9 @@ export class CameraBrowser {
         PropertyChangeOptions: 'PropertyChangeOptions',
         PropertyChangeValue: 'PropertyChangeValue',
         StateChange: 'StateChange',
+        VolumeAdd: 'VolumeAdd',
         VolumeChange: 'VolumeChange',
+        VolumeRemove: 'VolumeRemove',
     };
 
     constructor() {

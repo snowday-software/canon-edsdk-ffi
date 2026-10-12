@@ -11,6 +11,9 @@ const EdsObjectEventHandler = koffi.proto(
 const EdsStateEventHandler = koffi.proto(
     'uint32 __stdcall EdsStateEventHandler(uint32 inEvent, uint32 inEventData, void *inContext)',
 );
+const EdsProgressCallback = koffi.proto(
+    'uint32 __stdcall EdsProgressCallback(uint32 inPercent, void *inContext, int32 *outCancel)',
+);
 
 /**
  * Allocates a one-element pointer suitable for EDSDK output arguments.
@@ -70,6 +73,7 @@ export interface EdsFunctions {
     EdsGetPropertyData: (ref: any, propertyID: number, param: number, size: number, outData: Buffer) => number;
     EdsSetPropertyData: (ref: any, propertyID: number, param: number, size: number, inData: any) => number;
     EdsGetPropertyDesc: (ref: any, propertyID: number, outDesc: any) => number;
+    EdsGetPropertyDescEx: (ref: any, propertyID: number, outDesc: any) => number;
     EdsGetCameraList: (outList: any) => number;
     EdsGetDeviceInfo: (cameraRef: any, outInfo: any) => number;
     EdsOpenSession: (cameraRef: any) => number;
@@ -80,13 +84,20 @@ export interface EdsFunctions {
     EdsGetVolumeInfo: (volumeRef: any, outInfo: any) => number;
     EdsFormatVolume: (volumeRef: any) => number;
     EdsCreateFolder: (cameraRef: any) => number;
+    EdsCreateFlashSettingRef: (cameraRef: any, outFlashRef: any) => number;
     EdsGetDirectoryItemInfo: (itemRef: any, outInfo: any) => number;
     EdsDeleteDirectoryItem: (itemRef: any) => number;
+    EdsGetAttribute: (itemRef: any, outAttribute: [number]) => number;
+    EdsSetAttribute: (itemRef: any, attribute: number) => number;
+    EdsSetMetaImage: (itemRef: any, metaType: number, metaDataSize: number, metaData: any) => number;
+    EdsGetCsdFileData: (cameraRef: any, stream: any) => number;
+    EdsSetCsdFileData: (cameraRef: any, dataSize: number, dataValue: any) => number;
     EdsDownload: (itemRef: any, size: number | bigint, stream: any) => number;
     EdsDownloadCancel: (itemRef: any) => number;
     EdsDownloadComplete: (itemRef: any) => number;
     EdsDownloadThumbnail: (itemRef: any, stream: any) => number;
     EdsCreateFileStream: (filename: string, createDisposition: number, access: number, outStream: any) => number;
+    EdsCreateFileStreamEx: (filename: string, createDisposition: number, access: number, outStream: any) => number;
     EdsCreateMemoryStream: (size: number | bigint, outStream: any) => number;
     EdsCreateMemoryStreamFromPointer: (buffer: any, size: number | bigint, outStream: any) => number;
     EdsGetPointer: (stream: any, outPointer: any) => number;
@@ -96,6 +107,8 @@ export interface EdsFunctions {
     EdsGetPosition: (stream: any, outPosition: [number | bigint]) => number;
     EdsGetLength: (stream: any, outLength: [number | bigint]) => number;
     EdsCopyData: (source: any, size: number | bigint, dest: any) => number;
+    EdsCreateStream: (stream: any, outStreamRef: any) => number;
+    EdsSetProgressCallback: (ref: any, callback: any, option: number, context: any) => number;
     EdsCreateImageRef: (stream: any, outImageRef: any) => number;
     EdsGetImageInfo: (imageRef: any, imageSource: number, outInfo: any) => number;
     EdsGetImage: (
@@ -113,6 +126,7 @@ export interface EdsFunctions {
     EdsSetObjectEventHandler: (cameraRef: any, event: number, handler: any, context: any) => number;
     EdsSetCameraStateEventHandler: (cameraRef: any, event: number, handler: any, context: any) => number;
     EdsGetEvent: () => number;
+    EdsSetFramePoint: (cameraRef: any, framePoint: { x: number; y: number }, lockAfFrame: boolean) => number;
 }
 
 function bind(prototype: string): AnyKoffiFunc {
@@ -139,6 +153,9 @@ export const edsdk = {
     EdsGetPropertyDesc: bind(
         'uint32 __stdcall EdsGetPropertyDesc(void *inRef, uint32_t inPropertyID, _Out_ EdsPropertyDesc *outPropertyDesc)',
     ),
+    EdsGetPropertyDescEx: bind(
+        'uint32 __stdcall EdsGetPropertyDescEx(void *inRef, uint32_t inPropertyID, _Out_ EdsPropertyDescEx *outPropertyDesc)',
+    ),
     EdsGetCameraList: bind('uint32 __stdcall EdsGetCameraList(_Out_ void **outCameraListRef)'),
     EdsGetDeviceInfo: bind('uint32 __stdcall EdsGetDeviceInfo(void *inCameraRef, _Out_ EdsDeviceInfo *outDeviceInfo)'),
     EdsOpenSession: bind('uint32 __stdcall EdsOpenSession(void *inCameraRef)'),
@@ -151,16 +168,33 @@ export const edsdk = {
     EdsGetVolumeInfo: bind('uint32 __stdcall EdsGetVolumeInfo(void *inVolumeRef, _Out_ EdsVolumeInfo *outVolumeInfo)'),
     EdsFormatVolume: bind('uint32 __stdcall EdsFormatVolume(void *inVolumeRef)'),
     EdsCreateFolder: bind('uint32 __stdcall EdsCreateFolder(void *inCameraRef)'),
+    EdsCreateFlashSettingRef: bind('uint32 __stdcall EdsCreateFlashSettingRef(void *inCameraRef, _Out_ void **outFlashRef)'),
     EdsGetDirectoryItemInfo: bind(
         'uint32 __stdcall EdsGetDirectoryItemInfo(void *inDirItemRef, _Out_ EdsDirectoryItemInfo *outDirItemInfo)',
     ),
     EdsDeleteDirectoryItem: bind('uint32 __stdcall EdsDeleteDirectoryItem(void *inDirItemRef)'),
+    EdsGetAttribute: bind('uint32 __stdcall EdsGetAttribute(void *inDirItemRef, _Out_ int32_t *outFileAttribute)'),
+    EdsSetAttribute: bind('uint32 __stdcall EdsSetAttribute(void *inDirItemRef, int32_t inFileAttribute)'),
+    EdsSetMetaImage: bind(
+        'uint32 __stdcall EdsSetMetaImage(void *inDirItemRef, uint32_t inMetaType, uint32_t inMetaDataSize, const void *inMetaData)',
+    ),
+    EdsGetCsdFileData: bind('uint32 __stdcall EdsGetCsdFileData(void *inCameraRef, void *outStream)'),
+    EdsSetCsdFileData: bind('uint32 __stdcall EdsSetCsdFileData(void *inCameraRef, int32_t inDataSize, void *inDataValue)'),
     EdsDownload: bind('uint32 __stdcall EdsDownload(void *inDirItemRef, uint64_t inReadSize, void *outStream)'),
     EdsDownloadCancel: bind('uint32 __stdcall EdsDownloadCancel(void *inDirItemRef)'),
     EdsDownloadComplete: bind('uint32 __stdcall EdsDownloadComplete(void *inDirItemRef)'),
     EdsDownloadThumbnail: bind('uint32 __stdcall EdsDownloadThumbnail(void *inDirItemRef, void *outStream)'),
     EdsCreateFileStream: bind(
         'uint32 __stdcall EdsCreateFileStream(const char *inFileName, uint32_t inCreateDisposition, uint32_t inDesiredAccess, _Out_ void **outStream)',
+    ),
+    // EdsCreateFileStreamEx has a platform-specific filename argument:
+    // WCHAR* on Windows, CFURLRef on macOS, const char* on Linux.
+    EdsCreateFileStreamEx: bind(
+        process.platform === 'win32'
+            ? 'uint32 __stdcall EdsCreateFileStreamEx(const char16_t *inFileName, uint32_t inCreateDisposition, uint32_t inDesiredAccess, _Out_ void **outStream)'
+            : process.platform === 'darwin'
+              ? 'uint32 __stdcall EdsCreateFileStreamEx(const void *inURL, uint32_t inCreateDisposition, uint32_t inDesiredAccess, _Out_ void **outStream)'
+              : 'uint32 __stdcall EdsCreateFileStreamEx(const char *inFileName, uint32_t inCreateDisposition, uint32_t inDesiredAccess, _Out_ void **outStream)',
     ),
     EdsCreateMemoryStream: bind('uint32 __stdcall EdsCreateMemoryStream(uint64_t inBufferSize, _Out_ void **outStream)'),
     EdsCreateMemoryStreamFromPointer: bind(
@@ -177,6 +211,10 @@ export const edsdk = {
     EdsGetPosition: bind('uint32 __stdcall EdsGetPosition(void *inStreamRef, _Out_ uint64_t *outPosition)'),
     EdsGetLength: bind('uint32 __stdcall EdsGetLength(void *inStreamRef, _Out_ uint64_t *outLength)'),
     EdsCopyData: bind('uint32 __stdcall EdsCopyData(void *inStreamRef, uint64_t inWriteSize, void *outStreamRef)'),
+    EdsCreateStream: bind('uint32 __stdcall EdsCreateStream(EdsIStream *inStream, _Out_ void **outStreamRef)'),
+    EdsSetProgressCallback: bind(
+        'uint32 __stdcall EdsSetProgressCallback(void *inRef, EdsProgressCallback *inProgressCallback, uint32_t inProgressOption, void *inContext)',
+    ),
     EdsCreateImageRef: bind('uint32 __stdcall EdsCreateImageRef(void *inStreamRef, _Out_ void **outImageRef)'),
     EdsGetImageInfo: bind(
         'uint32 __stdcall EdsGetImageInfo(void *inImageRef, uint32_t inImageSource, _Out_ EdsImageInfo *outImageInfo)',
@@ -199,6 +237,9 @@ export const edsdk = {
         'uint32 __stdcall EdsSetCameraStateEventHandler(void *inCameraRef, uint32_t inEvnet, EdsStateEventHandler *inStateEventHandler, void *inContext)',
     ),
     EdsGetEvent: bind('uint32 __stdcall EdsGetEvent()'),
+    EdsSetFramePoint: bind(
+        'uint32 __stdcall EdsSetFramePoint(void *inCameraRef, EdsPoint inFramepoint, bool inLockAfFrame)',
+    ),
 } as EdsFunctions;
 
 /**
@@ -211,4 +252,4 @@ export function call<T>(name: keyof EdsFunctions, ...args: any[]): T {
     return (edsdk as any)[name](...args);
 }
 
-export { EdsCameraAddedHandler, EdsPropertyEventHandler, EdsObjectEventHandler, EdsStateEventHandler };
+export { EdsCameraAddedHandler, EdsPropertyEventHandler, EdsObjectEventHandler, EdsStateEventHandler, EdsProgressCallback };

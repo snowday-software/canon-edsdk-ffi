@@ -3,10 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
-import { ErrorCode, FileCreateDisposition, Access } from './ffi/constants.js';
+import { ErrorCode, FileCreateDisposition, Access, FileAttribute } from './ffi/constants.js';
 import { EdsDirectoryItemInfo } from './ffi/definitions.js';
 import { ApiError } from './api-error.js';
 import { FileFormat } from './values/file-format.js';
+import { Stream } from './stream.js';
+import { Directory } from './directory.js';
+import { Volume } from './volume.js';
 
 function throwIfError(code: number): void {
     if (code !== ErrorCode.OK) {
@@ -72,11 +75,18 @@ export class CameraFile {
     private isCanceled_ = false;
     private localFile_ = '';
 
+    static readonly Attribute = FileAttribute;
+
     /** @param ref - An EDSDK directory item reference for an image/audio file. */
     constructor(ref: any) {
         this.ref_ = ref;
         edsdk.EdsRetain(this.ref_);
         this.info_ = getDirectoryItemInfo(this.ref_);
+    }
+
+    /** Returns the underlying EDSDK directory item reference. */
+    getEdsReference(): any {
+        return this.ref_;
     }
 
     private dispose_() {
@@ -122,6 +132,83 @@ export class CameraFile {
     /** File format (e.g. CR2, JPG). */
     get format(): FileFormat {
         return new FileFormat(this.info_.format);
+    }
+
+    /** File attribute bitmask (see `CameraFile.Attribute`). */
+    get attribute(): number {
+        const out: [number] = [0];
+        throwIfError(edsdk.EdsGetAttribute(this.ref_, out));
+        return out[0];
+    }
+
+    /** Sets the file attribute bitmask on the camera (`EdsSetAttribute`). */
+    set attribute(value: number) {
+        throwIfError(edsdk.EdsSetAttribute(this.ref_, value));
+    }
+
+    /** Refreshes the cached directory-item info from the camera. */
+    refreshInfo(): void {
+        this.info_ = getDirectoryItemInfo(this.ref_);
+    }
+
+    /**
+     * Writes metadata (e.g. GPS coordinates) into the image on the camera
+     * (`EdsSetMetaImage`). Metadata is expressed as an array of
+     * little-endian `uint32` values; see the EDSDK reference for layout.
+     */
+    setMetaImage(metaType: number, metaData: number[] | Uint32Array): void {
+        const size = metaData.length * 4;
+        const buf = Buffer.alloc(size);
+        koffi.encode(buf, 'uint32_t', Array.from(metaData), metaData.length);
+        throwIfError(edsdk.EdsSetMetaImage(this.ref_, metaType, size, buf));
+    }
+
+    /** Deletes the file from the camera (`EdsDeleteDirectoryItem`). */
+    delete(): void {
+        throwIfError(edsdk.EdsDeleteDirectoryItem(this.ref_));
+    }
+
+    /**
+     * Returns the parent folder or volume of this file (`EdsGetParent`).
+     *
+     * Falls back to the raw EDSDK reference if it cannot be classified.
+     */
+    getParent(): Directory | Volume | any {
+        const ptr = createOutputPointer();
+        try {
+            throwIfError(edsdk.EdsGetParent(this.ref_, ptr));
+            const parent = readOutputPointer(ptr);
+            try {
+                return new Directory(parent);
+            } catch {
+                try {
+                    return new Volume(parent);
+                } catch {
+                    return parent;
+                }
+            }
+        } finally {
+            freeOutputPointer(ptr);
+        }
+    }
+
+    /** Downloads the file contents into an existing `Stream`. */
+    downloadToStream(stream: Stream): void {
+        throwIfError(edsdk.EdsDownload(this.ref_, this.info_.size, stream.getEdsReference()));
+        throwIfError(edsdk.EdsDownloadComplete(this.ref_));
+        this.isDownloaded_ = true;
+    }
+
+    /** Downloads the file into memory and returns a `Buffer`. */
+    downloadToBuffer(): Buffer {
+        const stream = Stream.inMemory(0);
+        try {
+            this.downloadToStream(stream);
+            return stream.readAll();
+        } finally {
+            stream.dispose();
+            this.dispose_();
+        }
     }
 
     /** Downloads the file to a directory, creating the directory if needed. */

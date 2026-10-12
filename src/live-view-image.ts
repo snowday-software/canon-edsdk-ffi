@@ -4,15 +4,19 @@ import { ErrorCode, PropertyID } from './ffi/constants.js';
 import { EdsSize, EdsRect, EdsPoint } from './ffi/definitions.js';
 import { ApiError } from './api-error.js';
 import { Option } from './values/option.js';
-import type { ICamera } from './property.js';
+import { CameraProperty, type ICamera } from './property.js';
 
 function throwIfError(code: number): void {
     if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
+        throwError(code);
     }
+}
+
+function throwError(code: number): never {
+    const apiError = new ApiError(code);
+    const err = new Error(`EDSDK error: ${apiError.label}`) as any;
+    err.EDS_ERROR = apiError;
+    throw err;
 }
 
 /**
@@ -61,6 +65,21 @@ export class LiveViewImage {
         if (this.disposed_) {
             throw new Error('LiveViewImage has already been disposed');
         }
+    }
+
+    /** Returns the underlying EDSDK EVF image reference. */
+    getEdsReference(): any {
+        return this.evfImageRef_;
+    }
+
+    /** Creates an accessor for a live-view image property on this frame. */
+    getProperty(propertyID: string | number, specifier = 0): CameraProperty {
+        this.ensureNotDisposed_();
+        const id = CameraProperty.getIDFor(propertyID);
+        if (id === undefined) {
+            throwError(ErrorCode.INVALID_PARAMETER);
+        }
+        return new CameraProperty(this, id, specifier);
     }
 
     private getImageProperty_<T>(identifier: number, size: number, type: string): T {
@@ -170,8 +189,8 @@ export class LiveViewImage {
         return { left: decoded.x, top: decoded.y };
     }
 
-    /** Returns the live view frame as a JPEG base64 data URL. */
-    getDataURL(): string | undefined {
+    /** Returns the live view frame as raw JPEG bytes. */
+    getData(): Buffer | undefined {
         this.ensureNotDisposed_();
         const lengthBuf = Buffer.alloc(8);
         throwIfError(edsdk.EdsGetLength(this.streamRef_, lengthBuf as any));
@@ -189,12 +208,18 @@ export class LiveViewImage {
                 return undefined;
             }
             const bytes = koffi.decode(pointer, 'uint8_t', n);
-            const b64 = Buffer.from(bytes as Uint8Array).toString('base64');
+            const buffer = Buffer.from(bytes as Uint8Array);
             this.dispose();
-            return `data:image/jpeg;base64,${b64}`;
+            return buffer;
         } finally {
             freeOutputPointer(pointerOut);
         }
+    }
+
+    /** Returns the live view frame as a JPEG base64 data URL. */
+    getDataURL(): string | undefined {
+        const buffer = this.getData();
+        return buffer ? `data:image/jpeg;base64,${buffer.toString('base64')}` : undefined;
     }
 
     /** Releases the live view image and stream references. */

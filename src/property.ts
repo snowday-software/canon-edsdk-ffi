@@ -1,7 +1,7 @@
 import koffi from 'koffi';
 import { edsdk } from './ffi/functions.js';
 import { PropertyID, DataType, ErrorCode, SaveTo } from './ffi/constants.js';
-import { EdsTime, EdsPictureStyleDesc, EdsRational, EdsPropertyDesc } from './ffi/definitions.js';
+import { EdsTime, EdsPictureStyleDesc, EdsRational, EdsPropertyDesc, EdsPropertyDescEx } from './ffi/definitions.js';
 import { ApiError } from './api-error.js';
 import { Aperture } from './values/aperture.js';
 import { ShutterSpeed } from './values/shutter-speed.js';
@@ -338,11 +338,27 @@ export class CameraProperty {
         }
     }
 
-    /** Returns the list of values currently allowed for this property. */
+    /**
+     * Returns the list of values currently allowed for this property.
+     *
+     * Falls back to `EdsGetPropertyDescEx` for cameras that report more
+     * elements than `EdsPropertyDesc` can hold (EDS_ERR_PROPERTIES_MISMATCH).
+     */
     get allowedValues(): any[] {
         const ref = this.camera.getEdsReference();
         const desc = koffi.alloc(EdsPropertyDesc, 1);
-        throwIfError(edsdk.EdsGetPropertyDesc(ref as any, this.identifier, desc));
+        const status = edsdk.EdsGetPropertyDesc(ref as any, this.identifier, desc);
+        if (status !== ErrorCode.OK) {
+            koffi.free(desc);
+            if (status !== ErrorCode.PROPERTIES_MISMATCH) {
+                throwIfError(status);
+            }
+            const descEx = koffi.alloc(EdsPropertyDescEx, 1);
+            throwIfError(edsdk.EdsGetPropertyDescEx(ref as any, this.identifier, descEx));
+            const { numElements, propDesc } = koffi.decode(descEx, 'EdsPropertyDescEx');
+            koffi.free(descEx);
+            return propDesc.slice(0, numElements).map((v: number | bigint) => wrapValue(this.identifier, Number(v)));
+        }
         const { numElements, propDesc } = koffi.decode(desc, 'EdsPropertyDesc');
         koffi.free(desc);
         const values: any[] = [];
@@ -385,9 +401,27 @@ export class CameraProperty {
         if (/^\d+$/.test(label)) {
             return parseInt(label, 10);
         }
-        return (PropertyID as Record<string, number>)[label];
+        return CameraProperty.ID[label];
     }
 
-    /** Record of all known EDSDK property IDs by name. */
-    static readonly ID: Record<string, number> = PropertyID as unknown as Record<string, number>;
+    /**
+     * Record of all known EDSDK property IDs by name.
+     *
+     * Includes legacy aliases exposed by the original node-canon-edsdk API
+     * (e.g. `JpegQuality`, `PictureStyleDescription`) alongside the canonical
+     * `kEdsPropID_*` header names.
+     */
+    static readonly ID: Record<string, number> = {
+        ...(PropertyID as Record<string, number>),
+        // Legacy aliases kept for API compatibility
+        CFn: 9,
+        MyMenu: 14,
+        JpegQuality: 0x101,
+        EFCompensation: 0x408,
+        FlashCompensation: 0x408,
+        DepthOfField: 0x41b,
+        Evf_FocusAid: 0x509,
+        PictureStyleDescription: PropertyID.PictureStyleDesc,
+        TemperatureStatus: PropertyID.TempStatus,
+    };
 }

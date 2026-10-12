@@ -188,6 +188,40 @@ function collectGroups(constants: Map<string, number>): Group[] {
     addGroup('StorageType', collectByPrefix('kEdsStorageType_', 'kEdsStorageType_'));
     addGroup('SaveTo', collectByPrefix('kEdsSaveTo_', 'kEdsSaveTo_'));
 
+    addGroup('AEMode', collectByPrefix('kEdsAEMode_', 'kEdsAEMode_'));
+    addGroup('Bracket', collectByPrefix('kEdsBracket_', 'kEdsBracket_'));
+    addGroup('ColorSpace', collectByPrefix('kEdsColorSpace_', 'kEdsColorSpace_'));
+    addGroup('CompressQuality', collectByPrefix('kEdsCompressQuality_', 'kEdsCompressQuality_'));
+    addGroup('DrivePowerZoom', collectByPrefix('kEdsDrivePowerZoom_', 'kEdsDrivePowerZoom_'));
+    addGroup('EvfDepthOfFieldPreview', collectByPrefix('kEdsEvfDepthOfFieldPreview_', 'kEdsEvfDepthOfFieldPreview_'));
+    addGroup('EvfDriveLens', collectByPrefix('kEdsEvfDriveLens_', 'kEdsEvfDriveLens_'));
+    addGroup('EvfZoom', collectByPrefix('kEdsEvfZoom_', 'kEdsEvfZoom_'));
+    addGroup('FileAttribute', collectByPrefix('kEdsFileAttribute_', 'kEdsFileAttribute_'));
+    addGroup('ImageSize', collectByPrefix('kEdsImageSize_', 'kEdsImageSize_'));
+    addGroup('ImageSource', collectByPrefix('kEdsImageSrc_', 'kEdsImageSrc_'));
+    addGroup('ImageType', collectByPrefix('kEdsImageType_', 'kEdsImageType_'));
+    addGroup('ObjectFormat', collectByPrefix('kEdsObjectFormat_', 'kEdsObjectFormat_'));
+    addGroup('ProgressOption', collectByPrefix('kEdsProgressOption_', 'kEdsProgressOption_'));
+    addGroup('SeekOrigin', collectByPrefix('kEdsSeek_', 'kEdsSeek_'));
+    addGroup('TargetImageType', collectByPrefix('kEdsTargetImageType_', 'kEdsTargetImageType_'));
+    addGroup('TransferOption', collectByPrefix('kEdsTransferOption_', 'kEdsTransferOption_'));
+    addGroup('WhiteBalance', collectByPrefix('kEdsWhiteBalance_', 'kEdsWhiteBalance_'));
+    addGroup('BatteryLevel2', collectByPrefix('kEdsBatteryLevel2_', 'kEdsBatteryLevel2_'));
+    addGroup('PictureStyle', collectByPrefix('kEdsPictureStyle_', 'kEdsPictureStyle_'));
+
+    // Header constants without an underscore separator
+    addGroup('EvfAFMode', collectByPrefix('Evf_AFMode_', 'Evf_AFMode_'));
+    addGroup('StroboMode', collectByPrefix('kEdsStroboMode', 'kEdsStroboMode'));
+    addGroup('ETTL2Mode', collectByPrefix('kEdsETTL2Mode', 'kEdsETTL2Mode'));
+    addGroup('DcStrobe', collectByPrefix('kEdsDcStrobe', 'kEdsDcStrobe'));
+    addGroup('DcLensBarrelState', collectByPrefix('kDcLensBarrelState', 'kDcLensBarrelState'));
+    addGroup('DcRemoteShootingMode', collectByPrefix('kDcRemoteShootingMode', 'kDcRemoteShootingMode'));
+    addGroup('MirrorLockupState', collectByPrefix('kEdsMirrorLockupState', 'kEdsMirrorLockupState'));
+    addGroup('MirrorUpSetting', collectByPrefix('kEdsMirrorUpSetting', 'kEdsMirrorUpSetting'));
+
+    // Packed image-quality values (EdsImageQuality_*)
+    addGroup('ImageQuality', collectByPrefix('EdsImageQuality_', 'EdsImageQuality_'));
+
     return groups;
 }
 

@@ -79,6 +79,7 @@ export class Option implements PropertyValue {
             [PropertyID.AEMode]: Option.AEMode,
             [PropertyID.AEModeSelect]: Option.AEModeSelect,
             [PropertyID.AFMode]: Option.AFMode,
+            [PropertyID.BatteryLevel]: Option.BatteryLevel,
             [PropertyID.BatteryQuality]: Option.BatteryQuality,
             [PropertyID.Bracket]: Option.Bracket,
             [PropertyID.ColorSpace]: Option.ColorSpace,
@@ -94,6 +95,7 @@ export class Option implements PropertyValue {
             [PropertyID.MirrorLockUpState]: Option.MirrorUpStatus,
             [PropertyID.MirrorUpSetting]: Option.MirrorUpStatus,
             [PropertyID.NoiseReduction]: Option.NoiseReduction,
+            [PropertyID.PictureStyle]: Option.PictureStyle,
             [PropertyID.RedEye]: Option.RedEye,
             [PropertyID.Record]: Option.Record,
             [PropertyID.SaveTo]: Option.SaveTo,
@@ -235,6 +237,14 @@ export class Option implements PropertyValue {
         LargeZoneAFVertical: 8,
         TrackingAF: 9,
         SpotAF: 10,
+        FlexibleZone1: 11,
+        FlexibleZone2: 12,
+        FlexibleZone3: 13,
+        WholeArea: 14,
+        NoTrakingSpot: 15,
+        NoTraking1Point: 16,
+        NoTrakingExpandCross: 17,
+        NoTrakingExpandAround: 18,
     };
 
     static readonly EvfHistogramStatus: Record<string, number> = {
@@ -253,7 +263,37 @@ export class Option implements PropertyValue {
     static readonly EvfZoom: Record<string, number> = {
         Fit: 1,
         x5: 5,
+        x6: 6,
         x10: 10,
+        x15: 15,
+    };
+
+    static readonly PictureStyle: Record<string, number> = {
+        Standard: 0x81,
+        Portrait: 0x82,
+        Landscape: 0x83,
+        Neutral: 0x84,
+        Faithful: 0x85,
+        Monochrome: 0x86,
+        Auto: 0x87,
+        FineDetail: 0x88,
+        User1: 0x21,
+        User2: 0x22,
+        User3: 0x23,
+        PC1: 0x41,
+        PC2: 0x42,
+        PC3: 0x43,
+    };
+
+    static readonly BatteryLevel: Record<string, number> = {
+        Empty: 0,
+        Low: 9,
+        Quarter: 19,
+        Half: 49,
+        Hi: 69,
+        Normal: 80,
+        AC: 0xffffffff,
+        Unknown: 0xfffffffe,
     };
 
     static readonly LensBarrelStatus: Record<string, number> = {

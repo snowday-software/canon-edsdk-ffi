@@ -78,6 +78,13 @@ export const EdsPropertyDesc = koffi.struct('EdsPropertyDesc', {
     propDesc: koffi.array('int32_t', 128),
 });
 
+export const EdsPropertyDescEx = koffi.struct('EdsPropertyDescEx', {
+    form: 'int32_t',
+    access: 'int32_t',
+    numElements: 'int32_t',
+    propDesc: koffi.array('int64_t', 2048),
+});
+
 export const EdsPictureStyleDesc = koffi.struct('EdsPictureStyleDesc', {
     contrast: 'int32_t',
     sharpness: 'uint32_t',
@@ -112,4 +119,102 @@ export const EdsImageInfo = koffi.struct('EdsImageInfo', {
     effectiveRect: EdsRect,
     reserved1: 'uint32_t',
     reserved2: 'uint32_t',
+});
+
+export const EdsGpsMetaData = koffi.struct('EdsGpsMetaData', {
+    latitudeRef: 'uint8_t',
+    longitudeRef: 'uint8_t',
+    altitudeRef: 'uint8_t',
+    status: 'uint8_t',
+    latitude: koffi.array(EdsRational, 3),
+    longitude: koffi.array(EdsRational, 3),
+    altitude: EdsRational,
+    timeStamp: koffi.array(EdsRational, 3),
+    dateStampYear: 'uint16_t',
+    dateStampMonth: 'uint8_t',
+    dateStampDay: 'uint8_t',
+});
+
+export const EdsSaveImageSetting = koffi.struct('EdsSaveImageSetting', {
+    JPEGQuality: 'uint32_t',
+    iccProfileStream: 'void *',
+    reserved: 'uint32_t',
+});
+
+export const EdsUsersetData = koffi.struct('EdsUsersetData', {
+    valid: 'uint32_t',
+    dataSize: 'uint32_t',
+    szCaption: koffi.array('char', 32, 'Buffer'),
+    data: koffi.array('uint8_t', 1),
+});
+
+export const EdsFrameDesc = koffi.struct('EdsFrameDesc', {
+    valid: 'uint32_t',
+    selected: 'uint32_t',
+    justFocus: 'uint32_t',
+    rect: EdsRect,
+    reserved: 'uint32_t',
+});
+
+export const EdsFramePoint = koffi.struct('EdsFramePoint', {
+    x: 'int32_t',
+    y: 'int32_t',
+});
+
+export const EdsCameraPos = koffi.struct('EdsCameraPos', {
+    status: 'int32_t',
+    position: 'int32_t',
+    rolling: 'int32_t',
+    pitching: 'int32_t',
+});
+
+export const EdsFocusShiftSet = koffi.struct('EdsFocusShiftSet', {
+    version: 'int32_t',
+    focusShiftFunction: 'int32_t',
+    shootingNumber: 'int32_t',
+    stepWidth: 'int32_t',
+    exposureSmoothing: 'int32_t',
+    focusStackingFunction: 'int32_t',
+    focusStackingTrimming: 'int32_t',
+    flashInterval: 'int32_t',
+});
+
+export const EdsManualWBData = koffi.struct('EdsManualWBData', {
+    valid: 'int32_t',
+    dataSize: 'int32_t',
+    szCaption: koffi.array('char', 32, 'Buffer'),
+    data: koffi.array('int8_t', 8),
+});
+
+export const EdsApertureLockSetting = koffi.struct('EdsApertureLockSetting', {
+    apertureLockStatus: 'uint32_t',
+    avValue: 'uint32_t',
+});
+
+export const EdsMovieFileNoSet = koffi.struct('EdsMovieFileNoSet', {
+    number: 'uint16_t',
+    reserve: 'uint16_t',
+});
+
+/* EdsIStream — user-provided stream vtable for EdsCreateStream (undocumented).
+ * Members are native function pointers created by koffi.register(). */
+export const EdsReadStream = koffi.proto(
+    'uint32 __stdcall EdsReadStream(void *inContext, uint32_t inReadSize, void *outBuffer, uint32_t *outReadSize)',
+);
+export const EdsWriteStream = koffi.proto(
+    'uint32 __stdcall EdsWriteStream(void *inContext, uint32_t inWriteSize, const void *inBuffer, uint32_t *outWrittenSize)',
+);
+export const EdsSeekStream = koffi.proto(
+    'uint32 __stdcall EdsSeekStream(void *inContext, int32_t inSeekOffset, uint32_t inSeekOrigin)',
+);
+export const EdsTellStream = koffi.proto('uint32 __stdcall EdsTellStream(void *inContext, int32_t *outPosition)');
+export const EdsGetStreamLength = koffi.proto('uint32 __stdcall EdsGetStreamLength(void *inContext, uint32_t *outLength)');
+
+export const EdsIStream = koffi.struct('EdsIStream', {
+    context: 'void *',
+    read: koffi.pointer(EdsReadStream),
+    write: koffi.pointer(EdsWriteStream),
+    seek: koffi.pointer(EdsSeekStream),
+    tell: koffi.pointer(EdsTellStream),
+    getLength: koffi.pointer(EdsGetStreamLength),
 });

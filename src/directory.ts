@@ -4,6 +4,7 @@ import { ErrorCode } from './ffi/constants.js';
 import { EdsDirectoryItemInfo } from './ffi/definitions.js';
 import { ApiError } from './api-error.js';
 import { CameraFile } from './camera-file.js';
+import { Volume } from './volume.js';
 
 export type DirectoryEntry = Directory | CameraFile;
 
@@ -51,6 +52,55 @@ export class Directory {
             edsdk.EdsRelease(this.ref_);
             throw new Error('Reference is not a directory.');
         }
+    }
+
+    /** Returns the underlying EDSDK directory item reference. */
+    getEdsReference(): any {
+        return this.ref_;
+    }
+
+    /** File attribute bitmask (see `FileAttribute` in `edsdkConstants`). */
+    get attribute(): number {
+        const out: [number] = [0];
+        throwIfError(edsdk.EdsGetAttribute(this.ref_, out));
+        return out[0];
+    }
+
+    /** Sets the file attribute bitmask on the camera (`EdsSetAttribute`). */
+    set attribute(value: number) {
+        throwIfError(edsdk.EdsSetAttribute(this.ref_, value));
+    }
+
+    /** Deletes this folder from the camera (`EdsDeleteDirectoryItem`). */
+    delete(): void {
+        throwIfError(edsdk.EdsDeleteDirectoryItem(this.ref_));
+    }
+
+    /**
+     * Returns the parent folder or volume of this directory (`EdsGetParent`).
+     */
+    getParent(): Directory | Volume | any {
+        const ptr = createOutputPointer();
+        try {
+            throwIfError(edsdk.EdsGetParent(this.ref_, ptr));
+            const parent = readOutputPointer(ptr);
+            try {
+                return new Directory(parent);
+            } catch {
+                try {
+                    return new Volume(parent);
+                } catch {
+                    return parent;
+                }
+            }
+        } finally {
+            freeOutputPointer(ptr);
+        }
+    }
+
+    /** Refreshes the cached directory-item info from the camera. */
+    refreshInfo(): void {
+        this.info_ = getDirectoryItemInfo(this.ref_);
     }
 
     /** Creates a `Directory` or `CameraFile` from a child reference. */
