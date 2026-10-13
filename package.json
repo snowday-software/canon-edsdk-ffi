@@ -21,6 +21,7 @@
     "scripts": {
         "clean": "rimraf dist",
         "build": "npm run clean && tsc -p tsconfig.json && esbuild dist/index.js --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:koffi",
+        "prepare": "npm run build",
         "typecheck": "tsc --noEmit",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",

@@ -1,49 +1,51 @@
 # canon-edsdk-ffi
 
-A modern, public TypeScript wrapper for the Canon EOS Digital SDK (EDSDK) using
-[Koffi](https://koffi.dev/) for runtime FFI. It discovers and loads Canon SDK
-libraries from the host system and exposes a high-level, async,
+A modern TypeScript wrapper for the Canon EOS Digital SDK (EDSDK) using
+[Koffi](https://koffi.dev/) for runtime FFI. It discovers and loads Canon's
+SDK libraries from the host system and exposes a high-level, async,
 event-emitter-oriented camera API.
 
-## Important: Canon SDK binaries are not included
+## Canon SDK binaries are not included
 
-This package does **not** redistribute any Canon EDSDK binaries. You must obtain
-the Canon EDSDK yourself (from the [Canon Developer Community](https://developercommunity.usa.canon.com/s/)) and make the runtime library available in one of these
-ways:
+This package does **not** redistribute Canon EDSDK binaries. Obtain the SDK
+from the [Canon Developer Community](https://developercommunity.usa.canon.com/s/)
+and make the runtime library available in one of these ways:
 
-- place `EDSDK.dll` / `libEDSDK.so` / `EDSDK.framework` in the working
-  directory, or
-- set the `EDSDK_PATH` environment variable to the directory containing the
-  library, or
-- place the Canon SDK ZIPs (or extracted SDKs) in `vendor/sdk/` and run
-  `npm run vendor:sync` to copy the runtime binaries into `vendor/bin/`.
+- copy it into your application's working directory, or
+- set the `EDSDK_PATH` environment variable to the library file or the
+  directory containing it, or
+- place the Canon SDK archives in `vendor/sdk/` and run
+  `npm run vendor:sync` (see [Vendor SDK layout](#vendor-sdk-layout)).
 
-This package is not currently published to npm. Use it as a local or workspace
-dependency.
+The file names searched for each platform are listed under
+[Library discovery](#library-discovery).
 
 ## Installation
 
-This package is not published to npm. Install it from the local checkout or as
-a workspace dependency:
+The package is not published to npm; install it directly from this repository:
+
+```bash
+npm install git+https://github.com/snowday-software/canon-edsdk-ffi.git
+```
+
+Installing from git runs the package's `prepare` script to build `dist/`,
+so make sure your package manager is configured to allow dependency build
+scripts for this package.
+
+Or install from a local checkout:
 
 ```bash
 npm install file:path/to/canon-edsdk-ffi
 ```
 
-Koffi builds a native addon during installation. The project already keeps a
-project-specific `allowScripts` list in `package.json` for npm, so only
-necessary build scripts are allowed. On pnpm you can approve just Koffi:
-
-```bash
-pnpm approve-builds koffi
-```
+Koffi ships prebuilt binaries for most platforms. If yours isn't covered,
+see the [Koffi documentation](https://koffi.dev/) for the platform support
+matrix and building from source.
 
 ## Requirements
 
-- Node.js `>= 18.0.0`
-- Canon EDSDK libraries set up via the local vendor mirror (see
-  [Vendor SDK layout](#vendor-sdk-layout) below)
-- TypeScript `^6.0.0`
+- Node.js `>= 18`
+- The Canon EDSDK runtime library (see above)
 
 ## Usage
 
@@ -76,8 +78,8 @@ try {
             [EDSDK.CameraProperty.ID.SaveTo]: EDSDK.Option.SaveTo.Host,
         });
 
-        // Poll SDK events
-        const stop = EDSDK.watchCameras(500);
+        // Poll SDK events every 50ms
+        const stop = EDSDK.watchCameras(50);
 
         // Take a picture after 2 seconds
         setTimeout(() => {
@@ -98,60 +100,61 @@ try {
 }
 ```
 
-A runnable skeleton is provided at `examples/camera-skeleton.ts`:
+A runnable example that connects to a camera, takes a picture, and downloads
+it to `tmp/` is at `examples/picture-test.ts`:
 
 ```bash
-npm run example:skeleton
+npm run example:picture-test
 ```
 
 ## Library discovery
 
-At runtime the package looks for the EDSDK library in the following locations
-(in order):
+At runtime the package searches the following locations, in order:
 
-1. The path pointed to by the `EDSDK_PATH` environment variable. It may point
-   to the library file itself or to the directory containing it.
-2. The current working directory.
-3. The `vendor/bin` directory.
+1. `EDSDK_PATH` — a path to the library file or the directory containing it
+2. the current working directory
+3. `vendor/bin` under the working directory
 
-Only the current platform's file names are searched: `EDSDK.dll` on Windows,
-`libEDSDK.so` on Linux, and `EDSDK` or `libEDSDK.dylib` on macOS — so binaries
-for multiple platforms can coexist in `vendor/bin` without being picked up by
-the wrong loader.
+Only the current platform's file names are searched, so binaries for
+multiple platforms can coexist in `vendor/bin` without being picked up by
+the wrong loader:
 
-The companion `EdsImage` library is searched similarly, using `EdsImage.dll`,
-`libEdsImage.so`, `libEdsImage.dylib`, or `EdsImage`, as appropriate for the
-platform.
+| Platform | EDSDK                     | EdsImage                        |
+| -------- | ------------------------- | ------------------------------- |
+| Windows  | `EDSDK.dll`               | `EdsImage.dll`                  |
+| Linux    | `libEDSDK.so`             | `libEdsImage.so`                |
+| macOS    | `EDSDK`, `libEDSDK.dylib` | `EdsImage`, `libEdsImage.dylib` |
+
+`EdsImage` is a companion library used for camera image processing; it is
+optional and not shipped with the Linux SDK.
 
 ## Vendor SDK layout
 
-Since Canon EDSDK downloads are not redistributable, they must be manually placed in
-`vendor/sdk/` and the sync script run to extract them:
+Since Canon EDSDK downloads are not redistributable, place the SDK archives
+in `vendor/sdk/` and run:
 
 ```bash
 npm run vendor:sync
 ```
 
-The script extracts every `*.zip` at the top of `vendor/sdk/` into a directory
-named after the archive (skipping ones already extracted; pass `--force` to
+The script extracts every `*.zip` in `vendor/sdk/` into a directory named
+after the archive (skipping ones already extracted; pass `--force` to
 re-extract) and expands the `Macintosh.dmg` nested inside the Macintosh SDK.
-All archives are handled by a bundled 7-Zip binary — no system tools or mounts
-are required, so this works on any host OS. You can also extract a single ZIP
-explicitly:
+Extraction uses a bundled 7-Zip binary — no system tools or mounts are
+required, so it works on any host OS. To extract a single archive:
 
 ```bash
 npm run vendor:sync -- /path/to/EDSDK_v13.20.21_Windows.zip
 ```
 
-After extraction, the script copies the runtime libraries for **all**
-platforms into the flat `vendor/bin/` directory: `EDSDK.dll`/`EdsImage.dll`
-(Windows), `libEDSDK.so` (Linux), `EDSDK`/`EdsImage` (macOS). The file names
-never collide across platforms, so binaries for every target can coexist — e.g.
-when assembling a multi-platform artifact in CI. Windows (`EDSDK_64` vs
-`EDSDK`) and Linux (`x86_64`/`ARM64`/`ARM32`) architecture choices follow
-`process.arch` of the machine running the script. The Linux SDK ships no
-`libEdsImage.so`, so that warning is expected. You can also copy the files into
-`vendor/bin/` manually instead of using the script.
+The script then copies the runtime libraries for **all** platforms into the
+flat `vendor/bin/` directory. Since the file names never collide across
+platforms, binaries for every target can coexist — e.g. when assembling a
+multi-platform artifact in CI. Windows (`EDSDK_64` vs `EDSDK`) and Linux
+(`x86_64`/`ARM64`/`ARM32`) architecture choices follow `process.arch` of the
+machine running the script. The Linux SDK ships no `libEdsImage.so`, so that
+warning is expected. You can also copy the files into `vendor/bin/` manually
+instead of using the script.
 
 ## API overview
 
@@ -213,14 +216,7 @@ This package is inspired by
 (previously published as `@dimensional/napi-canon-cameras`). The high-level
 API — `cameraBrowser`, `Camera`, `CameraProperty`, value classes, and the
 event names — is intentionally similar, so application code written against
-that wrapper is often easy to port.
-
-It is **not** a drop-in replacement. Naming and constants follow the current
-Canon EDSDK headers (`kEdsPropID_*`, `kEdsObjectEvent_*`, etc.) rather than
-the older wrapper's names, so legacy property names that no longer exist in
-the SDK (e.g. `JpegQuality`, `FlashCompensation`, `DepthOfField`,
-`PictureStyleDescription`) are not aliased — use the canonical names from
-`edsdkConstants.PropertyID` instead.
+that wrapper is generally very easy to port.
 
 ### SDK coverage and platform notes
 
@@ -236,18 +232,19 @@ header-only `EdsCreateStream`/`EdsIStream` API. Platform caveats:
 
 ## Scripts
 
-| Script             | Description                                     |
-| ------------------ | ----------------------------------------------- |
-| `build`            | Clean, type-check, and build ESM + CJS bundles. |
-| `typecheck`        | Run TypeScript with no emit.                    |
-| `lint`             | Run ESLint.                                     |
-| `lint:fix`         | Run ESLint and fix fixable issues.              |
-| `format`           | Check Prettier formatting.                      |
-| `format:fix`       | Apply Prettier formatting.                      |
-| `test`             | Run Vitest once.                                |
-| `test:watch`       | Run Vitest in watch mode.                       |
-| `vendor:sync`      | Extract SDK ZIPs in `vendor/sdk` (including the |
-|                    | macOS DMG) and copy all platforms' runtime      |
-|                    | libraries to `vendor/bin`.                      |
-| `vendor:clean`     | Remove the mirrored `vendor/bin` directory.     |
-| `example:skeleton` | Run the skeleton example.                       |
+| Script                 | Description                                          |
+| ---------------------- | ---------------------------------------------------- |
+| `build`                | Clean, type-check, and build ESM + CJS bundles.      |
+| `typecheck`            | Run TypeScript with no emit.                         |
+| `lint`                 | Run ESLint.                                          |
+| `lint:fix`             | Run ESLint and fix fixable issues.                   |
+| `format`               | Check Prettier formatting.                           |
+| `format:fix`           | Apply Prettier formatting.                           |
+| `test`                 | Run Vitest once.                                     |
+| `test:watch`           | Run Vitest in watch mode.                            |
+| `test:camera`          | Run the test suite against a connected camera.       |
+| `vendor:sync`          | Extract SDK archives in `vendor/sdk` (including the  |
+|                        | macOS DMG) and copy all platforms' runtime libraries |
+|                        | to `vendor/bin`.                                     |
+| `vendor:clean`         | Remove the mirrored `vendor/bin` directory.          |
+| `example:picture-test` | Run the take-a-picture example.                      |
