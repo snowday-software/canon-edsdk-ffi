@@ -8,15 +8,15 @@ event-emitter-oriented camera API.
 ## Important: Canon SDK binaries are not included
 
 This package does **not** redistribute any Canon EDSDK binaries. You must obtain
-the Canon EDSDK yourself and make the runtime library available in one of these
+the Canon EDSDK yourself (from the [Canon Developer Community](https://developercommunity.usa.canon.com/s/)) and make the runtime library available in one of these
 ways:
 
 - place `EDSDK.dll` / `libEDSDK.so` / `EDSDK.framework` in the working
   directory, or
 - set the `EDSDK_PATH` environment variable to the directory containing the
   library, or
-- place the extracted SDK in `vendor/sdk/` and run `npm run vendor:sync` to copy
-  the correct runtime binaries into `vendor/bin/<platform>`.
+- place the Canon SDK ZIPs (or extracted SDKs) in `vendor/sdk/` and run
+  `npm run vendor:sync` to copy the runtime binaries into `vendor/bin/`.
 
 This package is not currently published to npm. Use it as a local or workspace
 dependency.
@@ -109,29 +109,49 @@ npm run example:skeleton
 At runtime the package looks for the EDSDK library in the following locations
 (in order):
 
-1. The path pointed to by the `EDSDK_PATH` environment variable.
+1. The path pointed to by the `EDSDK_PATH` environment variable. It may point
+   to the library file itself or to the directory containing it.
 2. The current working directory.
-3. The `vendor/bin/<platform>` directory, where `<platform>` is `win32`,
-   `darwin`, or `linux`. Expected file names include `EDSDK.dll`, `libEDSDK.so`,
-   `libEDSDK.dylib`, or `EDSDK`, depending on the platform.
+3. The `vendor/bin` directory.
+
+Only the current platform's file names are searched: `EDSDK.dll` on Windows,
+`libEDSDK.so` on Linux, and `EDSDK` or `libEDSDK.dylib` on macOS — so binaries
+for multiple platforms can coexist in `vendor/bin` without being picked up by
+the wrong loader.
 
 The companion `EdsImage` library is searched similarly, using `EdsImage.dll`,
-`libEdsImage.so`, `libEdsImage.dylib`, or `EdsImage`.
+`libEdsImage.so`, `libEdsImage.dylib`, or `EdsImage`, as appropriate for the
+platform.
 
 ## Vendor SDK layout
 
-Canon EDSDK downloads are too large and licensed to redistribute with this
-package. Keep them out of version control by placing the extracted SDKs in
-`vendor/sdk/` and copying the runtime libraries to `vendor/bin/<platform>`:
+Since Canon EDSDK downloads are not redistributable, they must be manually placed in
+`vendor/sdk/` and the sync script run to extract them:
 
 ```bash
-# On Linux, after extracting the SDK to vendor/sdk/EDSDK_v13.20.21_Linux
 npm run vendor:sync
 ```
 
-This copies the correct architecture's `libEDSDK.so` into `vendor/bin/linux/`
-so the package can load it. For macOS, extract the `.dmg` first, then run the
-sync script. You can also copy the files manually.
+The script extracts every `*.zip` at the top of `vendor/sdk/` into a directory
+named after the archive (skipping ones already extracted; pass `--force` to
+re-extract) and expands the `Macintosh.dmg` nested inside the Macintosh SDK.
+All archives are handled by a bundled 7-Zip binary — no system tools or mounts
+are required, so this works on any host OS. You can also extract a single ZIP
+explicitly:
+
+```bash
+npm run vendor:sync -- /path/to/EDSDK_v13.20.21_Windows.zip
+```
+
+After extraction, the script copies the runtime libraries for **all**
+platforms into the flat `vendor/bin/` directory: `EDSDK.dll`/`EdsImage.dll`
+(Windows), `libEDSDK.so` (Linux), `EDSDK`/`EdsImage` (macOS). The file names
+never collide across platforms, so binaries for every target can coexist — e.g.
+when assembling a multi-platform artifact in CI. Windows (`EDSDK_64` vs
+`EDSDK`) and Linux (`x86_64`/`ARM64`/`ARM32`) architecture choices follow
+`process.arch` of the machine running the script. The Linux SDK ships no
+`libEdsImage.so`, so that warning is expected. You can also copy the files into
+`vendor/bin/` manually instead of using the script.
 
 ## API overview
 
@@ -215,7 +235,8 @@ header-only `EdsCreateStream`/`EdsIStream` API. Platform caveats:
 | `format:fix`       | Apply Prettier formatting.                      |
 | `test`             | Run Vitest once.                                |
 | `test:watch`       | Run Vitest in watch mode.                       |
-| `vendor:sync`      | Copy runtime libraries from `vendor/sdk` to     |
-|                    | `vendor/bin/<platform>`.                        |
+| `vendor:sync`      | Extract SDK ZIPs in `vendor/sdk` (including the |
+|                    | macOS DMG) and copy all platforms' runtime      |
+|                    | libraries to `vendor/bin`.                      |
 | `vendor:clean`     | Remove the mirrored `vendor/bin` directory.     |
 | `example:skeleton` | Run the skeleton example.                       |

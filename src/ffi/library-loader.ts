@@ -6,47 +6,44 @@ function getProcessCwd(): string {
     return process.cwd();
 }
 
-function getPlatformAliases(): string[] {
-    switch (process.platform) {
-        case 'win32':
-            return ['win32', 'windows'];
-        case 'darwin':
-            return ['darwin', 'mac'];
-        case 'linux':
-            return ['linux'];
-        default:
-            return [process.platform];
-    }
-}
-
-function getVendorBinDirs(): string[] {
-    const root = path.resolve(getProcessCwd(), 'vendor', 'bin');
-    return getPlatformAliases().map((platform) => path.join(root, platform));
+function getVendorBinDir(): string {
+    return path.resolve(getProcessCwd(), 'vendor', 'bin');
 }
 
 function getLibrarySearchPaths(fileNames: string[]): string[] {
     const paths: string[] = [];
     const explicit = process.env.EDSDK_PATH;
     if (explicit) {
-        paths.push(path.resolve(explicit));
-    }
-    const cwd = getProcessCwd();
-    for (const name of fileNames) {
-        paths.push(path.join(cwd, name));
-    }
-    for (const binDir of getVendorBinDirs()) {
+        const resolved = path.resolve(explicit);
+        paths.push(resolved);
         for (const name of fileNames) {
-            paths.push(path.join(binDir, name));
+            paths.push(path.join(resolved, name));
+        }
+    }
+    for (const dir of [getProcessCwd(), getVendorBinDir()]) {
+        for (const name of fileNames) {
+            paths.push(path.join(dir, name));
         }
     }
     return paths;
 }
 
-const EDSDK_FILE_NAMES = ['EDSDK.dll', 'libEDSDK.so', 'libEDSDK.dylib', 'EDSDK'];
+function getEdsdkFileNames(): string[] {
+    switch (process.platform) {
+        case 'win32':
+            return ['EDSDK.dll'];
+        case 'darwin':
+            return ['EDSDK', 'libEDSDK.dylib'];
+        case 'linux':
+            return ['libEDSDK.so'];
+        default:
+            return ['EDSDK.dll', 'libEDSDK.so', 'libEDSDK.dylib', 'EDSDK'];
+    }
+}
 
 /** Returns the ordered list of file paths searched for the EDSDK library. */
 export function getSearchPaths(): string[] {
-    return getLibrarySearchPaths(EDSDK_FILE_NAMES);
+    return getLibrarySearchPaths(getEdsdkFileNames());
 }
 
 /** Finds the first existing EDSDK library file in the search paths. */
@@ -84,10 +81,21 @@ export function getEdsdkLibrary(): LibraryHandle {
     return edsdkLibrary;
 }
 
-const EDS_IMAGE_FILE_NAMES = ['EdsImage.dll', 'libEdsImage.so', 'libEdsImage.dylib', 'EdsImage'];
+function getEdsImageFileNames(): string[] {
+    switch (process.platform) {
+        case 'win32':
+            return ['EdsImage.dll'];
+        case 'darwin':
+            return ['EdsImage', 'libEdsImage.dylib'];
+        case 'linux':
+            return ['libEdsImage.so'];
+        default:
+            return ['EdsImage.dll', 'libEdsImage.so', 'libEdsImage.dylib', 'EdsImage'];
+    }
+}
 
 function getEdsImageSearchPaths(): string[] {
-    return getLibrarySearchPaths(EDS_IMAGE_FILE_NAMES);
+    return getLibrarySearchPaths(getEdsImageFileNames());
 }
 
 function findEdsImagePath(): string | null {
