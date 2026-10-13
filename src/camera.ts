@@ -240,6 +240,9 @@ export class Camera implements ICamera {
         throwIfError(edsdk.EdsOpenSession(this.ref_));
         this.connected_ = true;
         this.emit_('CameraConnect', { camera: this });
+        // Evf_OutputDevice persists across sessions; sync live view state so a
+        // camera already streaming to the PC is detected (and reported) here.
+        this.updateLiveViewStatus_();
     }
 
     /** Closes the camera session. */
@@ -536,7 +539,12 @@ export class Camera implements ICamera {
         const current = prop.value as number | { value: number };
         const currentValue = typeof current === 'number' ? current : (current as any).value;
         const nextValue = currentValue | EvfOutputDevice.PC;
-        prop.value = nextValue;
+        if (nextValue !== currentValue) {
+            prop.value = nextValue;
+        }
+        // Don't rely solely on the Evf_OutputDevice change notification: it can
+        // be dropped under load. Re-read the property and emit LiveViewStart now.
+        this.updateLiveViewStatus_();
     }
 
     /** Disables live view output to the PC. */
@@ -551,10 +559,16 @@ export class Camera implements ICamera {
         if (nextValue !== currentValue) {
             prop.value = nextValue;
         }
+        this.updateLiveViewStatus_();
     }
 
     /** Returns `true` when live view output is currently active. */
     isLiveViewActive(): boolean {
+        // Self-heal a stale flag: if the Evf_OutputDevice change notification
+        // was missed, a direct re-read still reflects the true state.
+        if (!this.hasActiveLiveView_ && this.connected_) {
+            this.updateLiveViewStatus_();
+        }
         return this.hasActiveLiveView_;
     }
 
@@ -566,7 +580,7 @@ export class Camera implements ICamera {
 
     /** Creates a `LiveViewImage` for the current live view frame. */
     getLiveViewImage(): LiveViewImage | undefined {
-        if (!this.hasActiveLiveView_) {
+        if (!this.isLiveViewActive()) {
             return undefined;
         }
         return new LiveViewImage(this);
@@ -605,7 +619,9 @@ export class Camera implements ICamera {
                 this.emit_(active ? 'LiveViewStart' : 'LiveViewStop', { camera: this });
             }
             return active;
-        } catch {
+        } catch (err) {
+            // Surface the failure instead of leaving the flag silently stale.
+            this.emitError_(err);
             return this.hasActiveLiveView_;
         }
     }
