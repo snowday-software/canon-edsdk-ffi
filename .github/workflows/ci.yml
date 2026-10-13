@@ -24,3 +24,22 @@ jobs:
 
             - name: Test
               run: npm test
+
+    tag:
+        needs: test
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        concurrency: tag-main
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Tag release version
+              run: |
+                  tag="v$(node -p 'require("./package.json").version')"
+                  if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+                      echo "tag $tag already exists"
+                  else
+                      git tag "$tag" && git push origin "$tag"
+                  fi

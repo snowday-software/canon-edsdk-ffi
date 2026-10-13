@@ -1,7 +1,6 @@
 {
     "name": "canon-edsdk-ffi",
     "version": "0.5.1",
-    "private": true,
     "description": "Modern TypeScript FFI wrapper for the Canon EOS Digital SDK (EDSDK), built with Koffi.",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
@@ -21,7 +20,7 @@
     "scripts": {
         "clean": "rimraf dist",
         "build": "npm run clean && tsc -p tsconfig.json && esbuild dist/index.js --bundle --platform=node --format=cjs --outfile=dist/index.cjs --external:koffi",
-        "prepare": "npm run build",
+        "prepare": "npm run build && husky",
         "typecheck": "tsc --noEmit",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
@@ -55,6 +54,7 @@
         "7zip-bin-full": "^26.3.1",
         "eslint": "^10.8.1",
         "eslint-config-prettier": "^10.1.8",
+        "husky": "^9.1.7",
         "prettier": "^3.9.6",
         "rimraf": "^6.0.1",
         "tsx": "^4.23.12",

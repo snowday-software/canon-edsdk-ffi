@@ -1,0 +1,41 @@
+#!/bin/sh
+set -e
+
+PRE_COMMIT=1
+export PRE_COMMIT
+
+# Check Typescript types and run tests
+npm run typecheck
+npm test
+
+# Remember whether package-lock.json was untouched before the sync script
+# runs, so a sync can be auto-staged only when it wouldn't sweep up
+# unrelated edits.
+lock_was_clean=1
+if ! git diff --quiet -- package-lock.json 2>/dev/null || ! git diff --cached --quiet -- package-lock.json 2>/dev/null; then
+    lock_was_clean=0
+fi
+
+set +e
+# Sync package-lock.json version with package.json
+./node_modules/.bin/tsx scripts/sync-versions.ts
+sync_status=$?
+set -e
+
+if [ "$sync_status" -ne 0 ] && [ "$sync_status" -ne 2 ]; then
+    echo "Error: scripts/sync-versions.ts failed with exit code $sync_status"
+    exit 1
+fi
+
+if [ "$sync_status" -eq 2 ]; then
+    if [ "$lock_was_clean" -eq 1 ]; then
+        git add package-lock.json
+        echo "package-lock.json version synced and staged automatically."
+    else
+        echo
+        echo "Commit blocked: package-lock.json was updated to match package.json,"
+        echo "but it already had staged or unstaged changes. Review the diff,"
+        echo "stage package-lock.json, and commit again."
+        exit 1
+    fi
+fi
