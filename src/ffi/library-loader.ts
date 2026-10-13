@@ -12,7 +12,7 @@ function getVendorBinDir(): string {
 
 function getLibrarySearchPaths(fileNames: string[]): string[] {
     const paths: string[] = [];
-    const explicit = process.env.EDSDK_PATH;
+    const explicit = process.env['EDSDK_PATH'];
     if (explicit) {
         const resolved = path.resolve(explicit);
         paths.push(resolved);

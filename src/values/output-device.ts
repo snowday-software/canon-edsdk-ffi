@@ -17,8 +17,7 @@ export class OutputDevice implements PropertyValue {
     constructor(value: number) {
         this.value_ = value;
         const deviceNames: string[] = [];
-        for (const deviceName of Object.keys(OutputDevice.ID)) {
-            const id = OutputDevice.ID[deviceName]!;
+        for (const [deviceName, id] of Object.entries(OutputDevice.ID)) {
             if (id > 0 && this.isEnabled(id)) {
                 deviceNames.push(deviceName);
             }
@@ -51,8 +50,7 @@ export class OutputDevice implements PropertyValue {
 
     getDevices(): OutputDeviceStatusList {
         const devices: OutputDeviceStatusList = {};
-        for (const deviceName of Object.keys(OutputDevice.ID)) {
-            const id = OutputDevice.ID[deviceName]!;
+        for (const [deviceName, id] of Object.entries(OutputDevice.ID)) {
             if (id > 0) {
                 devices[deviceName] = this.isEnabled(id);
             }
@@ -68,7 +66,7 @@ export class OutputDevice implements PropertyValue {
         const deviceNames = label.match(/[\w\d]+/g) || [];
         let value = OutputDevice.ID.None ?? 0;
         for (const deviceName of deviceNames) {
-            const id = OutputDevice.ID[deviceName];
+            const id = OutputDevice.ID[deviceName as keyof typeof OutputDevice.ID];
             if (id !== undefined) {
                 value |= id;
             }
@@ -76,10 +74,10 @@ export class OutputDevice implements PropertyValue {
         return new OutputDevice(value);
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         None: 0,
         TFT: 1,
         PC: 2,
         PCSmall: 8,
-    };
+    } as const;
 }

@@ -5,17 +5,17 @@ import { ApiIdentifier } from './api-identifier.js';
  * transfer request.
  */
 export class ObjectEvent extends ApiIdentifier {
-    [Symbol.toStringTag] = 'ObjectEvent';
+    override [Symbol.toStringTag] = 'ObjectEvent';
 
     constructor(identifier: number) {
         super(identifier, ObjectEvent.ID);
     }
 
-    equalTo(other: number | ObjectEvent): boolean {
+    override equalTo(other: number | ObjectEvent): boolean {
         return super.equalTo(+other);
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         All: 0x200,
         VolumeInfoChanged: 0x201,
         VolumeUpdateItems: 0x202,
@@ -29,5 +29,5 @@ export class ObjectEvent extends ApiIdentifier {
         DirItemCancelTransferDT: 0x20a,
         VolumeAdded: 0x20c,
         VolumeRemoved: 0x20d,
-    };
+    } as const;
 }

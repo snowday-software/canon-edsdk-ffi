@@ -17,7 +17,7 @@ export class ISOSensitivity implements PropertyValue {
             this.label_ = 'Auto';
             this.sensitivity_ = 0;
         } else {
-            this.sensitivity_ = ISOSensitivity.Values[`${value_}`] ?? 0;
+            this.sensitivity_ = ISOSensitivity.Values[value_] ?? 0;
             this.label_ = this.sensitivity_.toString();
         }
     }
@@ -60,9 +60,8 @@ export class ISOSensitivity implements PropertyValue {
         } else {
             sensitivity = new ISOSensitivity(valueOrLabel).sensitivity;
         }
-        const found = Object.keys(ISOSensitivity.Values).reduce<{ value: number; difference: number } | null>(
-            (carry, key) => {
-                const current = ISOSensitivity.Values[key]!;
+        const found = Object.entries(ISOSensitivity.Values).reduce<{ value: number; difference: number } | null>(
+            (carry, [key, current]) => {
                 const difference = Math.abs(current - sensitivity);
                 if (!carry || difference < carry.difference) {
                     if (filter && !filter(new ISOSensitivity(+key))) {
@@ -79,17 +78,17 @@ export class ISOSensitivity implements PropertyValue {
 
     static forLabel(label: string): ISOSensitivity | null {
         if (label in ISOSensitivity.ID) {
-            return new ISOSensitivity(ISOSensitivity.ID[label]!);
+            return new ISOSensitivity(ISOSensitivity.ID[label as keyof typeof ISOSensitivity.ID]);
         }
-        const key = Object.keys(ISOSensitivity.Values).find((k) => ISOSensitivity.Values[k] === +label);
-        return key ? new ISOSensitivity(+key) : null;
+        const entry = Object.entries(ISOSensitivity.Values).find(([, v]) => v === +label);
+        return entry ? new ISOSensitivity(+entry[0]) : null;
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         Auto: 0,
-    };
+    } as const;
 
-    static readonly Values: Record<string, number> = {
+    static readonly Values: Record<number, number> = {
         '40': 6,
         '48': 12,
         '56': 25,

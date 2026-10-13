@@ -2,26 +2,27 @@ import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
 import { ErrorCode } from './ffi/constants.js';
 import { EdsDirectoryItemInfo } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
+import { throwIfError } from './api-error.js';
 import { CameraFile } from './camera-file.js';
 import { Volume } from './volume.js';
 
 export type DirectoryEntry = Directory | CameraFile;
 
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
-
 function readString(buf: Buffer): string {
     return buf.toString('utf-8').split('\0')[0] ?? '';
 }
 
-function getDirectoryItemInfo(ref: any) {
+interface DirectoryItemInfo {
+    size: number | bigint;
+    isFolder: number;
+    groupID: number;
+    option: number;
+    szFileName: Buffer;
+    format: number;
+    dateTime: number;
+}
+
+function getDirectoryItemInfo(ref: unknown): DirectoryItemInfo {
     const ptr = koffi.alloc(EdsDirectoryItemInfo, 1);
     try {
         throwIfError(edsdk.EdsGetDirectoryItemInfo(ref, ptr));
@@ -40,11 +41,11 @@ function getDirectoryItemInfo(ref: any) {
 export class Directory {
     [Symbol.toStringTag] = 'Directory';
 
-    private ref_: any;
-    private info_: any;
+    private ref_: unknown;
+    private info_: DirectoryItemInfo;
 
     /** @param ref - An EDSDK directory item reference for a folder. */
-    constructor(ref: any) {
+    constructor(ref: unknown) {
         this.ref_ = ref;
         edsdk.EdsRetain(this.ref_);
         this.info_ = getDirectoryItemInfo(this.ref_);
@@ -55,7 +56,7 @@ export class Directory {
     }
 
     /** Returns the underlying EDSDK directory item reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
@@ -79,7 +80,7 @@ export class Directory {
     /**
      * Returns the parent folder or volume of this directory (`EdsGetParent`).
      */
-    getParent(): Directory | Volume | any {
+    getParent(): Directory | Volume | unknown {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsGetParent(this.ref_, ptr));
@@ -104,8 +105,8 @@ export class Directory {
     }
 
     /** Creates a `Directory` or `CameraFile` from a child reference. */
-    static wrapChild(ref: any): DirectoryEntry {
-        let info: any;
+    static wrapChild(ref: unknown): DirectoryEntry {
+        let info: DirectoryItemInfo;
         try {
             info = getDirectoryItemInfo(ref);
         } catch {

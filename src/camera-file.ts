@@ -3,28 +3,29 @@ import os from 'node:os';
 import path from 'node:path';
 import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
-import { ErrorCode, FileCreateDisposition, Access, FileAttribute } from './ffi/constants.js';
+import { FileCreateDisposition, Access, FileAttribute } from './ffi/constants.js';
 import { EdsDirectoryItemInfo } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
+import { throwIfError } from './api-error.js';
 import { FileFormat } from './values/file-format.js';
 import { Stream } from './stream.js';
 import { Directory } from './directory.js';
 import { Volume } from './volume.js';
 
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
-
 function readString(buf: Buffer): string {
     return buf.toString('utf-8').split('\0')[0] ?? '';
 }
 
-function getDirectoryItemInfo(ref: any) {
+interface DirectoryItemInfo {
+    size: number | bigint;
+    isFolder: number;
+    groupID: number;
+    option: number;
+    szFileName: Buffer;
+    format: number;
+    dateTime: number;
+}
+
+function getDirectoryItemInfo(ref: unknown): DirectoryItemInfo {
     const ptr = koffi.alloc(EdsDirectoryItemInfo, 1);
     try {
         throwIfError(edsdk.EdsGetDirectoryItemInfo(ref, ptr));
@@ -69,8 +70,8 @@ function readStreamToBase64(streamRef: any): string {
 export class CameraFile {
     [Symbol.toStringTag] = 'CameraFile';
 
-    private ref_: any;
-    private info_: any;
+    private ref_: unknown;
+    private info_: DirectoryItemInfo;
     private isDownloaded_ = false;
     private isCanceled_ = false;
     private localFile_ = '';
@@ -78,14 +79,14 @@ export class CameraFile {
     static readonly Attribute = FileAttribute;
 
     /** @param ref - An EDSDK directory item reference for an image/audio file. */
-    constructor(ref: any) {
+    constructor(ref: unknown) {
         this.ref_ = ref;
         edsdk.EdsRetain(this.ref_);
         this.info_ = getDirectoryItemInfo(this.ref_);
     }
 
     /** Returns the underlying EDSDK directory item reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
@@ -173,7 +174,7 @@ export class CameraFile {
      *
      * Falls back to the raw EDSDK reference if it cannot be classified.
      */
-    getParent(): Directory | Volume | any {
+    getParent(): Directory | Volume | unknown {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsGetParent(this.ref_, ptr));

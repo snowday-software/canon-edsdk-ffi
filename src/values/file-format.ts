@@ -10,7 +10,7 @@ export class FileFormat implements PropertyValue {
 
     constructor(private readonly value_: number) {
         this.label_ =
-            Object.keys(FileFormat.ID).find((key) => FileFormat.ID[key] === value_) ??
+            Object.entries(FileFormat.ID).find(([, id]) => id === value_)?.[0] ??
             `0x${value_.toString(16).padStart(8, '0')}`;
     }
 
@@ -42,12 +42,12 @@ export class FileFormat implements PropertyValue {
         return value !== undefined ? new FileFormat(value) : null;
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         Unknown: 0,
         JPEG: 0x3801,
         CR2: 0xb103,
         CR3: 0xb108,
         HEIF_CODE: 0xb10b,
         MP4: 0xb982,
-    };
+    } as const;
 }

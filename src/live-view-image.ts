@@ -2,22 +2,9 @@ import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
 import { ErrorCode, PropertyID } from './ffi/constants.js';
 import { EdsSize, EdsRect, EdsPoint } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
+import { throwIfError, throwError } from './api-error.js';
 import { Option } from './values/option.js';
-import { CameraProperty, type ICamera } from './property.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        throwError(code);
-    }
-}
-
-function throwError(code: number): never {
-    const apiError = new ApiError(code);
-    const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-    err.EDS_ERROR = apiError;
-    throw err;
-}
+import { CameraProperty, type ICamera, type PropertyName } from './property.js';
 
 /**
  * Represents a single live view (EVF) frame downloaded from the camera.
@@ -68,12 +55,12 @@ export class LiveViewImage {
     }
 
     /** Returns the underlying EDSDK EVF image reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.evfImageRef_;
     }
 
     /** Creates an accessor for a live-view image property on this frame. */
-    getProperty(propertyID: string | number, specifier = 0): CameraProperty {
+    getProperty(propertyID: PropertyName | number, specifier = 0): CameraProperty {
         this.ensureNotDisposed_();
         const id = CameraProperty.getIDFor(propertyID);
         if (id === undefined) {

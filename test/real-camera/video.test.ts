@@ -12,7 +12,7 @@ import {
     sleep,
 } from './setup.js';
 
-const shouldRecord = process.env.CANON_TEST_VIDEO === '1';
+const shouldRecord = process.env['CANON_TEST_VIDEO'] === '1';
 
 describe('video recording', () => {
     beforeAll(async () => {

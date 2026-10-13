@@ -13,15 +13,15 @@ export class ShutterSpeed implements PropertyValue {
     private readonly label_: string;
 
     constructor(private readonly value_: number) {
-        const name = Object.keys(ShutterSpeed.ID).find((key) => ShutterSpeed.ID[key] === value_);
+        const name = Object.entries(ShutterSpeed.ID).find(([, v]) => v === value_)?.[0];
         if (name) {
             this.label_ = name;
             this.seconds_ = 0;
-        } else if (`${value_}` in ShutterSpeed.OneThirdValues) {
-            this.seconds_ = ShutterSpeed.OneThirdValues[`${value_}`] ?? 0;
+        } else if (value_ in ShutterSpeed.OneThirdValues) {
+            this.seconds_ = ShutterSpeed.OneThirdValues[value_] ?? 0;
             this.label_ = ShutterSpeed.getLabelForSeconds(this.seconds_) + ' (1/3)';
         } else {
-            this.seconds_ = ShutterSpeed.OneHalfValues[`${value_}`] ?? 0;
+            this.seconds_ = ShutterSpeed.OneHalfValues[value_] ?? 0;
             this.label_ = ShutterSpeed.getLabelForSeconds(this.seconds_);
         }
     }
@@ -77,9 +77,8 @@ export class ShutterSpeed implements PropertyValue {
         } else {
             seconds = new ShutterSpeed(valueOrLabel).seconds;
         }
-        const found = Object.keys(ShutterSpeed.AllValues).reduce<{ value: number; difference: number } | null>(
-            (carry, key) => {
-                const current = ShutterSpeed.AllValues[key]!;
+        const found = Object.entries(ShutterSpeed.AllValues).reduce<{ value: number; difference: number } | null>(
+            (carry, [key, current]) => {
                 const difference = Math.abs(current - seconds);
                 if (!carry || difference < carry.difference) {
                     if (filter && !filter(new ShutterSpeed(+key))) {
@@ -96,7 +95,7 @@ export class ShutterSpeed implements PropertyValue {
 
     static forLabel(label: string): ShutterSpeed | null {
         if (label in ShutterSpeed.ID) {
-            return new ShutterSpeed(ShutterSpeed.ID[label]!);
+            return new ShutterSpeed(ShutterSpeed.ID[label as keyof typeof ShutterSpeed.ID]);
         }
         const match = label.match(/(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+))?(?:\s+(.*))?/);
         if (match) {
@@ -106,19 +105,19 @@ export class ShutterSpeed implements PropertyValue {
                 seconds /= parseFloat(match[2]!);
             }
             const values = isOneThird ? ShutterSpeed.OneThirdValues : ShutterSpeed.OneHalfValues;
-            const key = Object.keys(values).find((straw) => Math.abs(values[straw]! - seconds) < 0.00001);
-            return new ShutterSpeed(+(key ?? -1));
+            const entry = Object.entries(values).find(([, v]) => Math.abs(v - seconds) < 0.00001);
+            return new ShutterSpeed(entry ? +entry[0] : -1);
         }
         return null;
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         Auto: 0,
         Bulb: 12,
         NotValid: 4294967295,
-    };
+    } as const;
 
-    static readonly OneHalfValues: Record<string, number> = {
+    static readonly OneHalfValues: Record<number, number> = {
         '16': 30,
         '19': 25,
         '20': 20,
@@ -187,7 +186,7 @@ export class ShutterSpeed implements PropertyValue {
         '160': 0.000125,
     };
 
-    static readonly OneThirdValues: Record<string, number> = {
+    static readonly OneThirdValues: Record<number, number> = {
         '21': 20,
         '29': 10,
         '35': 6,
@@ -197,7 +196,7 @@ export class ShutterSpeed implements PropertyValue {
         '91': 0.05,
     };
 
-    static readonly AllValues: Record<string, number> = {
+    static readonly AllValues: Record<number, number> = {
         '16': 30,
         '19': 25,
         '20': 20,

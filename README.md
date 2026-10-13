@@ -206,10 +206,21 @@ State events are surfaced as `StateChange` and include the raw `inEventData`
 in `event.data`. Live view start/stop are emitted as `LiveViewStart` /
 `LiveViewStop` when the EVF output device changes.
 
-`CameraProperty.ID` also carries legacy aliases used by the original
-`node-canon-edsdk` API (`JpegQuality`, `FlashCompensation`, `DepthOfField`,
-`PictureStyleDescription`, `TemperatureStatus`, `CFn`, `MyMenu`, and
-`Evf_FocusAid`).
+### Relationship to `napi-canon-cameras`
+
+This package is inspired by
+[napi-canon-cameras](https://github.com/ThomasWeinert/napi-canon-cameras)
+(previously published as `@dimensional/napi-canon-cameras`). The high-level
+API — `cameraBrowser`, `Camera`, `CameraProperty`, value classes, and the
+event names — is intentionally similar, so application code written against
+that wrapper is often easy to port.
+
+It is **not** a drop-in replacement. Naming and constants follow the current
+Canon EDSDK headers (`kEdsPropID_*`, `kEdsObjectEvent_*`, etc.) rather than
+the older wrapper's names, so legacy property names that no longer exist in
+the SDK (e.g. `JpegQuality`, `FlashCompensation`, `DepthOfField`,
+`PictureStyleDescription`) are not aliased — use the canonical names from
+`edsdkConstants.PropertyID` instead.
 
 ### SDK coverage and platform notes
 

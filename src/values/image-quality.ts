@@ -21,7 +21,7 @@ export class ImageQuality implements PropertyValue {
 
     constructor(private readonly value_: number) {
         this.label_ =
-            Object.keys(ImageQuality.ID).find((key) => ImageQuality.ID[key] === value_) ??
+            Object.entries(ImageQuality.ID).find(([, v]) => v === value_)?.[0] ??
             '0x' + value_.toString(16).padStart(8, '0');
     }
 
@@ -79,11 +79,11 @@ export class ImageQuality implements PropertyValue {
     }
 
     static forLabel(label: string): ImageQuality | null {
-        const value = ImageQuality.ID[label];
+        const value = ImageQuality.ID[label as keyof typeof ImageQuality.ID];
         return value !== undefined ? new ImageQuality(value) : null;
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         CR: 6553359,
         CRHEIFL: 6488192,
         CRHEIFLF: 6488195,
@@ -194,18 +194,18 @@ export class ImageQuality implements PropertyValue {
         SRSJF: 40108563,
         SRSJN: 40108562,
         Unknown: 4294967295,
-    };
+    } as const;
 
-    static readonly Format: Record<string, number> = {
+    static readonly Format = {
         Unknown: 0,
         JPEG: 1,
         CRW: 2,
         RAW: 4,
         CR2: 6,
         HEIF: 8,
-    };
+    } as const;
 
-    static readonly Size: Record<string, number> = {
+    static readonly Size = {
         Large: 0,
         Middle: 1,
         Small: 2,
@@ -215,13 +215,13 @@ export class ImageQuality implements PropertyValue {
         Small2: 15,
         Small3: 16,
         Unknown: 0xffffffff,
-    };
+    } as const;
 
-    static readonly CompressionQuality: Record<string, number> = {
+    static readonly CompressionQuality = {
         Normal: 2,
         Fine: 3,
         Lossless: 4,
         SuperFine: 5,
         Unknown: 0xffffffff,
-    };
+    } as const;
 }

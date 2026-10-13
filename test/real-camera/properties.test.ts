@@ -50,20 +50,20 @@ describe('camera properties', () => {
     it('round-trips SaveTo to Host', () => {
         getCamera().setProperty(EDSDK.CameraProperty.ID.SaveTo, EDSDK.Option.SaveTo.Host);
         const prop = getCamera().getProperty(EDSDK.CameraProperty.ID.SaveTo);
-        expect(prop.value.value).toBe(EDSDK.Option.SaveTo.Host);
+        expect((prop.value as EDSDK.PropertyValue).value).toBe(EDSDK.Option.SaveTo.Host);
     });
 
     it('round-trips WhiteBalance to AutoAmbiencePriority', () => {
         getCamera().setProperty(EDSDK.CameraProperty.ID.WhiteBalance, EDSDK.Option.WhiteBalance.AutoAmbiencePriority);
         const prop = getCamera().getProperty(EDSDK.CameraProperty.ID.WhiteBalance);
-        expect(prop.value.value).toBe(EDSDK.Option.WhiteBalance.AutoAmbiencePriority);
+        expect((prop.value as EDSDK.PropertyValue).value).toBe(EDSDK.Option.WhiteBalance.AutoAmbiencePriority);
     });
 
     it('round-trips PictureStyle to 0x81 (Standard)', () => {
         getCamera().setProperty(EDSDK.CameraProperty.ID.PictureStyle, 0x81);
         const prop = getCamera().getProperty(EDSDK.CameraProperty.ID.PictureStyle);
-        expect(prop.value.value).toBe(0x81);
-        expect(prop.value.label).toBe('PictureStyle.Standard');
+        expect((prop.value as EDSDK.PropertyValue).value).toBe(0x81);
+        expect((prop.value as EDSDK.PropertyValue).label).toBe('PictureStyle.Standard');
     });
 
     it('emits PropertyChangeValue after a setting change', async () => {

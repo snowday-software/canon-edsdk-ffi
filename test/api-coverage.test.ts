@@ -72,26 +72,6 @@ describe('constants coverage', () => {
     });
 });
 
-describe('CameraProperty.ID legacy aliases', () => {
-    it('resolves legacy names used by the old wrapper', () => {
-        const expected: Record<string, number> = {
-            CFn: 9,
-            MyMenu: 14,
-            JpegQuality: 0x101,
-            EFCompensation: 0x408,
-            FlashCompensation: 0x408,
-            DepthOfField: 0x41b,
-            Evf_FocusAid: 0x509,
-            PictureStyleDescription: CameraProperty.ID.PictureStyleDesc,
-            TemperatureStatus: CameraProperty.ID.TempStatus,
-        };
-        for (const [name, id] of Object.entries(expected)) {
-            expect(CameraProperty.ID[name]).toBe(id);
-            expect(CameraProperty.getIDFor(name)).toBe(id);
-        }
-    });
-});
-
 describe('Option groups', () => {
     it('maps new property groups for labels', () => {
         const wb = new Option(CameraProperty.ID.PictureStyle, 0x83);

@@ -14,7 +14,7 @@ export class TimeZone implements PropertyValue {
 
     constructor(private readonly value_: number) {
         this.zone_ = value_;
-        this.label_ = TimeZone.Zones[`${value_}`] ?? '';
+        this.label_ = TimeZone.Zones[value_] ?? '';
     }
 
     get label(): string {
@@ -48,7 +48,7 @@ export class TimeZone implements PropertyValue {
         return { label: this.label_, value: this.value_, zone: this.zone_, difference: this.difference_ };
     }
 
-    static readonly Zones: Record<string, string> = {
+    static readonly Zones: Record<number, string> = {
         '0': 'None',
         '1': 'Chatham Islands',
         '2': 'Wellington',

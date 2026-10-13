@@ -13,7 +13,7 @@ export class ExposureCompensation implements PropertyValue {
     private readonly label_: string;
 
     constructor(private readonly value_: number) {
-        this.compensation_ = ExposureCompensation.Values[`${value_}`] ?? 0;
+        this.compensation_ = ExposureCompensation.Values[value_] ?? 0;
         this.label_ = ExposureCompensation.getLabelForCompensation(this.compensation_);
     }
 
@@ -62,9 +62,8 @@ export class ExposureCompensation implements PropertyValue {
     }
 
     private static findNearestValue(compensation: number): number | null {
-        const found = Object.keys(ExposureCompensation.Values).reduce<{ value: number; difference: number }>(
-            (carry, key) => {
-                const current = ExposureCompensation.Values[key]!;
+        const found = Object.entries(ExposureCompensation.Values).reduce<{ value: number; difference: number }>(
+            (carry, [key, current]) => {
                 const difference = Math.abs(current - compensation);
                 if (difference < carry.difference) {
                     return { value: +key, difference };
@@ -92,7 +91,7 @@ export class ExposureCompensation implements PropertyValue {
         return null;
     }
 
-    static readonly Values: Record<string, number> = {
+    static readonly Values: Record<number, number> = {
         '0': 0,
         '3': 0.3333333333333333,
         '4': 0.5,

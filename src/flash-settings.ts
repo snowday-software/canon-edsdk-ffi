@@ -1,16 +1,7 @@
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
 import { ErrorCode } from './ffi/constants.js';
-import { ApiError } from './api-error.js';
-import { CameraProperty, type ICamera } from './property.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
+import { throwIfError, throwError } from './api-error.js';
+import { CameraProperty, type ICamera, type PropertyName } from './property.js';
 
 /**
  * Wraps an `EdsFlashRef` created by `EdsCreateFlashSettingRef`.
@@ -22,7 +13,7 @@ function throwIfError(code: number): void {
 export class FlashSettings implements ICamera {
     [Symbol.toStringTag] = 'FlashSettings';
 
-    private ref_: any;
+    private ref_: unknown;
 
     /** @param camera - A connected camera to create the flash settings object on. */
     constructor(camera: ICamera) {
@@ -36,18 +27,15 @@ export class FlashSettings implements ICamera {
     }
 
     /** Returns the underlying EDSDK flash reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
     /** Creates an accessor for a flash setting property. */
-    getProperty(propertyID: string | number, specifier = 0): CameraProperty {
+    getProperty(propertyID: PropertyName | number, specifier = 0): CameraProperty {
         const id = CameraProperty.getIDFor(propertyID);
         if (id === undefined) {
-            const apiError = new ApiError(ErrorCode.INVALID_PARAMETER);
-            const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-            err.EDS_ERROR = apiError;
-            throw err;
+            throwError(ErrorCode.INVALID_PARAMETER);
         }
         return new CameraProperty(this, id, specifier);
     }

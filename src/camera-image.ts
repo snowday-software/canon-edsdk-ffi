@@ -11,18 +11,9 @@ import {
     ObjectFormat,
 } from './ffi/constants.js';
 import { EdsImageInfo } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
-import { CameraProperty, type ICamera } from './property.js';
+import { throwIfError, throwError } from './api-error.js';
+import { CameraProperty, type ICamera, type PropertyName } from './property.js';
 import { Stream } from './stream.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
 
 export interface ImageInfo {
     width: number;
@@ -42,7 +33,7 @@ export interface ImageInfo {
 export class CameraImage implements ICamera {
     [Symbol.toStringTag] = 'CameraImage';
 
-    private ref_: any;
+    private ref_: unknown;
     private stream_?: Stream;
     private ownsStream_ = false;
 
@@ -53,7 +44,7 @@ export class CameraImage implements ICamera {
     static readonly ObjectFormat = ObjectFormat;
 
     /** @param ref - An EDSDK image reference (`EdsImageRef`). */
-    constructor(ref: any) {
+    constructor(ref: unknown) {
         this.ref_ = ref;
         edsdk.EdsRetain(this.ref_);
     }
@@ -98,7 +89,7 @@ export class CameraImage implements ICamera {
     }
 
     /** Returns the underlying EDSDK image reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
@@ -182,13 +173,10 @@ export class CameraImage implements ICamera {
     }
 
     /** Creates an accessor for an image property (EXIF/metadata values). */
-    getProperty(propertyID: string | number, specifier = 0): CameraProperty {
+    getProperty(propertyID: PropertyName | number, specifier = 0): CameraProperty {
         const id = CameraProperty.getIDFor(propertyID);
         if (id === undefined) {
-            const apiError = new ApiError(ErrorCode.INVALID_PARAMETER);
-            const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-            err.EDS_ERROR = apiError;
-            throw err;
+            throwError(ErrorCode.INVALID_PARAMETER);
         }
         return new CameraProperty(this, id, specifier);
     }

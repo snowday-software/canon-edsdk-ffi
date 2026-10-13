@@ -104,7 +104,7 @@ export class Option implements PropertyValue {
         return this.optionGroupsCache;
     }
 
-    static readonly AEMode: Record<string, number> = {
+    static readonly AEMode = {
         Program: 0,
         Tv: 1,
         Av: 2,
@@ -164,51 +164,51 @@ export class Option implements PropertyValue {
         BackgroundBlur: 62,
         VideoBlog: 63,
         Unknown: 0xffffffff,
-    };
+    } as const;
 
-    static readonly AEModeSelect: Record<string, number> = {
+    static readonly AEModeSelect = {
         ...Option.AEMode,
         Custom2: 16,
         Custom3: 17,
-    };
+    } as const;
 
-    static readonly AFMode: Record<string, number> = {
+    static readonly AFMode = {
         OneShot: 0,
         AIServo: 1,
         AIFocus: 2,
         ManualFocus: 3,
         NotValid: 0xffffffff,
-    };
+    } as const;
 
-    static readonly BatteryQuality: Record<string, number> = {
+    static readonly BatteryQuality = {
         Low: 0,
         Half: 1,
         High: 2,
         Full: 3,
-    };
+    } as const;
 
-    static readonly Bracket: Record<string, number> = {
+    static readonly Bracket = {
         AEBracket: 1,
         ISOBracket: 2,
         WBBracket: 4,
         FEBracket: 8,
         BracketOff: 0xffffffff,
-    };
+    } as const;
 
-    static readonly ColorSpace: Record<string, number> = {
+    static readonly ColorSpace = {
         sRGB: 1,
         AdobeRGB: 2,
         Unknown: 0xffffffff,
-    };
+    } as const;
 
-    static readonly DCStrobe: Record<string, number> = {
+    static readonly DCStrobe = {
         Auto: 0,
         On: 1,
         SlowSynchro: 2,
         Off: 3,
-    };
+    } as const;
 
-    static readonly DriveMode: Record<string, number> = {
+    static readonly DriveMode = {
         SingleShooting: 0,
         ContinuousShooting: 1,
         Video: 2,
@@ -223,9 +223,9 @@ export class Option implements PropertyValue {
         SilentContinuousShooting: 20,
         SilentHSContinuous: 21,
         SilentLSContinuous: 22,
-    };
+    } as const;
 
-    static readonly EvfAFMode: Record<string, number> = {
+    static readonly EvfAFMode = {
         Quick: 0,
         OnePointAF: 1,
         FaceTracking: 2,
@@ -245,30 +245,30 @@ export class Option implements PropertyValue {
         NoTraking1Point: 16,
         NoTrakingExpandCross: 17,
         NoTrakingExpandAround: 18,
-    };
+    } as const;
 
-    static readonly EvfHistogramStatus: Record<string, number> = {
+    static readonly EvfHistogramStatus = {
         Hide: 0,
         Normal: 1,
         Grayout: 2,
-    };
+    } as const;
 
-    static readonly EvfOutputDevice: Record<string, number> = {
+    static readonly EvfOutputDevice = {
         None: 0,
         TFT: 1,
         PC: 2,
         SmallPC: 8,
-    };
+    } as const;
 
-    static readonly EvfZoom: Record<string, number> = {
+    static readonly EvfZoom = {
         Fit: 1,
         x5: 5,
         x6: 6,
         x10: 10,
         x15: 15,
-    };
+    } as const;
 
-    static readonly PictureStyle: Record<string, number> = {
+    static readonly PictureStyle = {
         Standard: 0x81,
         Portrait: 0x82,
         Landscape: 0x83,
@@ -283,9 +283,9 @@ export class Option implements PropertyValue {
         PC1: 0x41,
         PC2: 0x42,
         PC3: 0x43,
-    };
+    } as const;
 
-    static readonly BatteryLevel: Record<string, number> = {
+    static readonly BatteryLevel = {
         Empty: 0,
         Low: 9,
         Quarter: 19,
@@ -294,58 +294,58 @@ export class Option implements PropertyValue {
         Normal: 80,
         AC: 0xffffffff,
         Unknown: 0xfffffffe,
-    };
+    } as const;
 
-    static readonly LensBarrelStatus: Record<string, number> = {
+    static readonly LensBarrelStatus = {
         Inner: 0,
         Outer: 1,
-    };
+    } as const;
 
-    static readonly LensStatus: Record<string, number> = {
+    static readonly LensStatus = {
         NotAttached: 0,
         Attached: 1,
-    };
+    } as const;
 
-    static readonly MeteringMode: Record<string, number> = {
+    static readonly MeteringMode = {
         Spot: 1,
         Evaluative: 3,
         Partial: 4,
         CenterWeightedAverage: 5,
         NotValid: 0xffffffff,
-    };
+    } as const;
 
-    static readonly MirrorUpStatus: Record<string, number> = {
+    static readonly MirrorUpStatus = {
         Disable: 0,
         Enable: 1,
         DuringShooting: 2,
-    };
+    } as const;
 
-    static readonly NoiseReduction: Record<string, number> = {
+    static readonly NoiseReduction = {
         Off: 0,
         On1: 1,
         On2: 2,
         On3: 3,
         Auto: 4,
-    };
+    } as const;
 
-    static readonly RedEye: Record<string, number> = {
+    static readonly RedEye = {
         Off: 0,
         On: 1,
         Invalid: 0xffffffff,
-    };
+    } as const;
 
-    static readonly Record: Record<string, number> = {
+    static readonly Record = {
         End: 0,
         Begin: 4,
-    };
+    } as const;
 
-    static readonly SaveTo: Record<string, number> = {
+    static readonly SaveTo = {
         Camera: 1,
         Host: 2,
         Both: 3,
-    };
+    } as const;
 
-    static readonly WhiteBalance: Record<string, number> = {
+    static readonly WhiteBalance = {
         AutoAmbiencePriority: 0,
         Daylight: 1,
         Cloudy: 2,
@@ -367,5 +367,5 @@ export class Option implements PropertyValue {
         AutoWhitePriority: 23,
         Click: 0xffffffff,
         Pasted: 0xfffffffe,
-    };
+    } as const;
 }

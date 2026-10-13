@@ -17,8 +17,8 @@ export {
 export * as edsdkConstants from './ffi/constants.js';
 export * as edsdkDefinitions from './ffi/definitions.js';
 export { edsdk, call, type EdsFunctions } from './ffi/functions.js';
-export { ApiError } from './api-error.js';
-export { CameraProperty, type ICamera } from './property.js';
+export { ApiError, EdsError, isEdsError } from './api-error.js';
+export { CameraProperty, type ICamera, type PropertyName, type PropertyData } from './property.js';
 export {
     Camera,
     CameraBrowser,
@@ -31,6 +31,7 @@ export {
     type VolumeChangeEvent,
     type ObjectChangeEvent,
     type StateChangeEvent,
+    type EventName,
     type EventCallback,
 } from './camera.js';
 export { CameraFile } from './camera-file.js';
@@ -75,6 +76,7 @@ import * as timeZone from './values/time-zone.js';
 import * as fileFormat from './values/file-format.js';
 import * as flag from './values/flag.js';
 import * as option from './values/option.js';
+import type * as propertyValue from './values/property-value.js';
 import * as apiIdentifier from './values/api-identifier.js';
 import * as objectEvent from './values/object-event.js';
 import * as stateEvent from './values/state-event.js';
@@ -94,6 +96,8 @@ namespace CameraApi {
     export import CameraImage = cameraImage.CameraImage;
     export import FlashSettings = flashSettings.FlashSettings;
     export import ApiError = apiError.ApiError;
+    export import EdsError = apiError.EdsError;
+    export const isEdsError = apiError.isEdsError;
     export import ApiIdentifier = apiIdentifier.ApiIdentifier;
     export import Aperture = aperture.Aperture;
     export import ShutterSpeed = shutterSpeed.ShutterSpeed;
@@ -114,7 +118,11 @@ namespace CameraApi {
     export type VolumeChangeEvent = camera.VolumeChangeEvent;
     export type ObjectChangeEvent = camera.ObjectChangeEvent;
     export type StateChangeEvent = camera.StateChangeEvent;
+    export type EventName = camera.EventName;
     export type EventCallback = camera.EventCallback;
+    export type PropertyName = property.PropertyName;
+    export type PropertyData = property.PropertyData;
+    export type PropertyValue = propertyValue.PropertyValue;
     export type StreamHandlers = stream.StreamHandlers;
     export type ProgressCallback = stream.ProgressCallback;
     export type ImageInfo = cameraImage.ImageInfo;

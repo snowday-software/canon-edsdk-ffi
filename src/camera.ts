@@ -21,8 +21,8 @@ import {
     EvfOutputDevice,
 } from './ffi/constants.js';
 import { EdsDeviceInfo, EdsDirectoryItemInfo } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
-import { CameraProperty, type ICamera } from './property.js';
+import { isEdsError, throwIfError, throwError, type ApiError } from './api-error.js';
+import { CameraProperty, type ICamera, type PropertyName } from './property.js';
 import { CameraFile } from './camera-file.js';
 import { LiveViewImage } from './live-view-image.js';
 import { Volume } from './volume.js';
@@ -31,19 +31,6 @@ import { ObjectEvent as ObjectEventValue } from './values/object-event.js';
 import { StateEvent as StateEventValue } from './values/state-event.js';
 import type { Stream } from './stream.js';
 import { FlashSettings } from './flash-settings.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        throwError(code);
-    }
-}
-
-function throwError(code: number): never {
-    const apiError = new ApiError(code);
-    const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-    err.EDS_ERROR = apiError;
-    throw err;
-}
 
 function readString(buf: Buffer): string {
     return buf.toString('utf-8').split('\0')[0] ?? '';
@@ -79,7 +66,12 @@ export interface StateChangeEvent extends CameraDeviceEvent {
     data?: number;
 }
 
-export type EventCallback = (eventName: string, event: CameraDeviceEvent | ApiError) => void;
+/** Union of all event names emitted by `Camera`/`CameraBrowser`. */
+export type EventName =
+    | (typeof Camera.EventName)[keyof typeof Camera.EventName]
+    | (typeof CameraBrowser.EventName)[keyof typeof CameraBrowser.EventName];
+
+export type EventCallback = (eventName: EventName, event: CameraDeviceEvent | ApiError) => void;
 
 /**
  * Represents a single Canon camera connected to the host PC.
@@ -92,7 +84,7 @@ export type EventCallback = (eventName: string, event: CameraDeviceEvent | ApiEr
 export class Camera implements ICamera {
     [Symbol.toStringTag] = 'Camera';
 
-    private ref_!: any;
+    private ref_!: unknown;
     private browser_!: CameraBrowser;
     private description_ = '';
     private portName_ = '';
@@ -106,30 +98,7 @@ export class Camera implements ICamera {
     private propertyCallback_?: bigint;
     private objectCallback_?: bigint;
 
-    static readonly EventName: Record<
-        | 'CameraConnect'
-        | 'CameraDisconnect'
-        | 'StateChange'
-        | 'KeepAlive'
-        | 'LiveViewStart'
-        | 'LiveViewStop'
-        | 'PropertyChangeOptions'
-        | 'PropertyChangeValue'
-        | 'DownloadRequest'
-        | 'DownloadCancel'
-        | 'FileCreate'
-        | 'FileRemove'
-        | 'FileChange'
-        | 'DirectoryCreate'
-        | 'DirectoryRemove'
-        | 'DirectoryChange'
-        | 'VolumeAdd'
-        | 'VolumeRemove'
-        | 'VolumeChange'
-        | 'ObjectChange'
-        | 'Error',
-        string
-    > = {
+    static readonly EventName = {
         CameraConnect: 'CameraConnect',
         CameraDisconnect: 'CameraDisconnect',
         DirectoryChange: 'DirectoryChange',
@@ -151,25 +120,9 @@ export class Camera implements ICamera {
         VolumeAdd: 'VolumeAdd',
         VolumeChange: 'VolumeChange',
         VolumeRemove: 'VolumeRemove',
-    };
+    } as const;
 
-    static readonly Command: Record<
-        | 'MovieSelectSwON'
-        | 'SetRemoteShootingMode'
-        | 'TakePicture'
-        | 'DoEvfAf'
-        | 'ExtendShutDownTimer'
-        | 'RequestRollPitchLevel'
-        | 'BulbStart'
-        | 'BulbEnd'
-        | 'DoClickWBEvf'
-        | 'PressShutterButton'
-        | 'DriveLensEvf'
-        | 'MovieSelectSwOFF'
-        | 'DrivePowerZoom'
-        | 'RequestSensorCleaning',
-        number
-    > = {
+    static readonly Command = {
         BulbEnd: 3,
         BulbStart: 2,
         DoClickWBEvf: 260,
@@ -184,18 +137,15 @@ export class Camera implements ICamera {
         RequestSensorCleaning: 274,
         SetRemoteShootingMode: 271,
         TakePicture: 0,
-    };
+    } as const;
 
-    static readonly PressShutterButton: Record<
-        'HalfwayNonAF' | 'OFF' | 'Halfway' | 'Completely' | 'CompletelyNonAF',
-        number
-    > = {
+    static readonly PressShutterButton = {
         Completely: 3,
         CompletelyNonAF: 65539,
         Halfway: 1,
         HalfwayNonAF: 65537,
         OFF: 0,
-    };
+    } as const;
 
     /**
      * Creates a `Camera` instance.
@@ -254,7 +204,7 @@ export class Camera implements ICamera {
     }
 
     /** Returns the underlying EDSDK camera reference as an opaque pointer. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
@@ -352,7 +302,7 @@ export class Camera implements ICamera {
      * @param specifier - Optional property specifier (used for array-like
      *   properties such as drive mode).
      */
-    getProperty(propertyID: string | number, specifier = 0): CameraProperty {
+    getProperty(propertyID: PropertyName | number, specifier = 0): CameraProperty {
         const id = CameraProperty.getIDFor(propertyID);
         if (id === undefined) {
             throwError(ErrorCode.INVALID_PARAMETER);
@@ -361,15 +311,15 @@ export class Camera implements ICamera {
     }
 
     /** Sets a single camera property. */
-    setProperty(propertyID: string | number, value: any, specifier = 0) {
+    setProperty(propertyID: PropertyName | number, value: unknown, specifier = 0) {
         const prop = this.getProperty(propertyID, specifier);
         prop.value = value;
     }
 
     /** Sets multiple camera properties from a key/value record. */
-    setProperties(properties: Record<string | number, any>) {
+    setProperties(properties: Partial<Record<PropertyName | number, unknown>>) {
         for (const [key, value] of Object.entries(properties)) {
-            this.setProperty(key, value);
+            this.setProperty(key as PropertyName, value);
         }
     }
 
@@ -660,7 +610,7 @@ export class Camera implements ICamera {
         }
     }
 
-    private emit_(eventName: string, event: any) {
+    private emit_(eventName: EventName, event: any) {
         if (this.eventHandler_) {
             try {
                 this.eventHandler_(eventName, event);
@@ -671,10 +621,9 @@ export class Camera implements ICamera {
         this.browser_.emitEvent(eventName, event);
     }
 
-    private emitError_(err: any) {
-        const apiError = err?.EDS_ERROR as ApiError | undefined;
-        if (apiError) {
-            this.emit_('Error', apiError);
+    private emitError_(err: unknown) {
+        if (isEdsError(err)) {
+            this.emit_('Error', err.EDS_ERROR);
         }
     }
 
@@ -741,7 +690,7 @@ export class Camera implements ICamera {
 
     private handleObjectEvent_(inEvent: number, inRef: any): number {
         try {
-            let eventName: string | undefined;
+            let eventName: EventName | undefined;
             let data: any;
             const objectEvent = new ObjectEventValue(inEvent);
             switch (inEvent) {
@@ -832,32 +781,7 @@ export class CameraBrowser {
     private eventHandler_?: EventCallback;
     private cameraAddedCallback_?: bigint;
 
-    static readonly EventName: Record<
-        | 'CameraAdd'
-        | 'CameraRemove'
-        | 'CameraConnect'
-        | 'CameraDisconnect'
-        | 'StateChange'
-        | 'KeepAlive'
-        | 'LiveViewStart'
-        | 'LiveViewStop'
-        | 'PropertyChangeOptions'
-        | 'PropertyChangeValue'
-        | 'DownloadRequest'
-        | 'DownloadCancel'
-        | 'FileCreate'
-        | 'FileRemove'
-        | 'FileChange'
-        | 'DirectoryCreate'
-        | 'DirectoryRemove'
-        | 'DirectoryChange'
-        | 'VolumeAdd'
-        | 'VolumeRemove'
-        | 'VolumeChange'
-        | 'ObjectChange'
-        | 'Error',
-        string
-    > = {
+    static readonly EventName = {
         CameraAdd: 'CameraAdd',
         CameraConnect: 'CameraConnect',
         CameraDisconnect: 'CameraDisconnect',
@@ -881,7 +805,7 @@ export class CameraBrowser {
         VolumeAdd: 'VolumeAdd',
         VolumeChange: 'VolumeChange',
         VolumeRemove: 'VolumeRemove',
-    };
+    } as const;
 
     constructor() {
         if (CameraBrowser.instance_) {
@@ -1065,7 +989,7 @@ export class CameraBrowser {
         }
     }
 
-    private emit_(eventName: string, event: any) {
+    private emit_(eventName: EventName, event: any) {
         if (this.eventHandler_) {
             try {
                 this.eventHandler_(eventName, event);
@@ -1075,7 +999,7 @@ export class CameraBrowser {
         }
     }
 
-    public emitEvent(eventName: string, event: any) {
+    public emitEvent(eventName: EventName, event: any) {
         this.emit_(eventName, event);
     }
 }

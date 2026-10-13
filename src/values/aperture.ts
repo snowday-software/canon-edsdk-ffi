@@ -13,16 +13,16 @@ export class Aperture implements PropertyValue {
     private readonly aperture_: number;
 
     constructor(private readonly value_: number) {
-        const name = Object.keys(Aperture.ID).find((key) => Aperture.ID[key] === value_);
+        const name = Object.entries(Aperture.ID).find(([, v]) => v === value_)?.[0];
         const formatAperture = (aperture: number) => 'f' + aperture.toFixed(1).replace(/\.0$/, '');
         if (name) {
             this.label_ = name;
             this.aperture_ = 0;
-        } else if (`${value_}` in Aperture.OneThirdValues) {
-            this.aperture_ = Aperture.OneThirdValues[`${value_}`] ?? 0;
+        } else if (value_ in Aperture.OneThirdValues) {
+            this.aperture_ = Aperture.OneThirdValues[value_] ?? 0;
             this.label_ = formatAperture(this.aperture_) + ' (1/3)';
         } else {
-            this.aperture_ = Aperture.OneHalfValues[`${value_}`] ?? 0;
+            this.aperture_ = Aperture.OneHalfValues[value_] ?? 0;
             this.label_ = formatAperture(this.aperture_);
         }
     }
@@ -69,41 +69,43 @@ export class Aperture implements PropertyValue {
         } else {
             aperture = new Aperture(valueOrLabel).aperture;
         }
-        const found = Object.keys(Aperture.AllValues).reduce<{ value: number; difference: number } | null>((carry, key) => {
-            const current = Aperture.AllValues[key]!;
-            const difference = Math.abs(current - aperture);
-            if (!carry || difference < carry.difference) {
-                if (filter && !filter(new Aperture(+key))) {
-                    return carry;
+        const found = Object.entries(Aperture.AllValues).reduce<{ value: number; difference: number } | null>(
+            (carry, [key, current]) => {
+                const difference = Math.abs(current - aperture);
+                if (!carry || difference < carry.difference) {
+                    if (filter && !filter(new Aperture(+key))) {
+                        return carry;
+                    }
+                    return { value: +key, difference };
                 }
-                return { value: +key, difference };
-            }
-            return carry;
-        }, null);
+                return carry;
+            },
+            null,
+        );
         return found ? new Aperture(found.value) : null;
     }
 
     static forLabel(label: string): Aperture | null {
         if (label in Aperture.ID) {
-            return new Aperture(Aperture.ID[label]!);
+            return new Aperture(Aperture.ID[label as keyof typeof Aperture.ID]);
         }
         const match = label.match(/f?(\d+(?:\.\d+)?)\s*(.*)/);
         if (match) {
             const aperture = parseFloat(match[1]!) || 0.0;
             const isOneThird = (match[2] ?? '').includes('1/3');
             const values = isOneThird ? Aperture.OneThirdValues : Aperture.OneHalfValues;
-            const key = Object.keys(values).find((straw) => Math.abs(values[straw]! - aperture) < 0.00001);
-            return new Aperture(+(key ?? -1));
+            const entry = Object.entries(values).find(([, v]) => Math.abs(v - aperture) < 0.00001);
+            return new Aperture(entry ? +entry[0] : -1);
         }
         return null;
     }
 
-    static readonly ID: Record<string, number> = {
+    static readonly ID = {
         Auto: 0,
         NotValid: 4294967295,
-    };
+    } as const;
 
-    static readonly OneHalfValues: Record<string, number> = {
+    static readonly OneHalfValues: Record<number, number> = {
         '8': 1,
         '11': 1.1,
         '12': 1.2,
@@ -155,7 +157,7 @@ export class Aperture implements PropertyValue {
         '133': 3.4,
     };
 
-    static readonly OneThirdValues: Record<string, number> = {
+    static readonly OneThirdValues: Record<number, number> = {
         '13': 1.2,
         '21': 1.8,
         '29': 2.5,
@@ -163,7 +165,7 @@ export class Aperture implements PropertyValue {
         '67': 13,
     };
 
-    static readonly AllValues: Record<string, number> = {
+    static readonly AllValues: Record<number, number> = {
         '8': 1,
         '11': 1.1,
         '12': 1.2,

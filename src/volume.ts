@@ -2,23 +2,22 @@ import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
 import { ErrorCode, StorageType } from './ffi/constants.js';
 import { EdsVolumeInfo } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
+import { throwIfError } from './api-error.js';
 import { Directory, type DirectoryEntry } from './directory.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
 
 function readString(buf: Buffer): string {
     return buf.toString('utf-8').split('\0')[0] ?? '';
 }
 
-function getVolumeInfo(ref: any) {
+interface VolumeInfo {
+    storageType: number;
+    access: number;
+    maxCapacity: number | bigint;
+    freeSpaceInBytes: number | bigint;
+    szVolumeLabel: Buffer;
+}
+
+function getVolumeInfo(ref: unknown): VolumeInfo {
     const ptr = koffi.alloc(EdsVolumeInfo, 1);
     try {
         throwIfError(edsdk.EdsGetVolumeInfo(ref, ptr));
@@ -37,8 +36,8 @@ function getVolumeInfo(ref: any) {
 export class Volume {
     [Symbol.toStringTag] = 'Volume';
 
-    private ref_: any;
-    private info_: any;
+    private ref_: unknown;
+    private info_: VolumeInfo;
 
     static readonly StorageType: Record<'NoMemoryCard' | 'CompactFlash' | 'SDCard' | 'HardDrive' | 'CFast' | 'CFe', number> =
         {
@@ -51,14 +50,14 @@ export class Volume {
         };
 
     /** @param ref - An EDSDK volume reference. */
-    constructor(ref: any) {
+    constructor(ref: unknown) {
         this.ref_ = ref;
         edsdk.EdsRetain(this.ref_);
         this.info_ = getVolumeInfo(this.ref_);
     }
 
     /** Returns the underlying EDSDK volume reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
@@ -115,7 +114,7 @@ export class Volume {
      * Returns the parent reference of this volume — the camera
      * (`EdsGetParent`). Compare with `camera.getEdsReference()`.
      */
-    getParent(): any {
+    getParent(): unknown {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsGetParent(this.ref_, ptr));

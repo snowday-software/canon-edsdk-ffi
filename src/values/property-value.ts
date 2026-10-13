@@ -2,5 +2,5 @@
 export interface PropertyValue {
     value: number;
     label: string;
-    toJSON?(): any;
+    toJSON?(): unknown;
 }

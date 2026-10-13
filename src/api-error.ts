@@ -1,3 +1,4 @@
+import { ErrorCode } from './ffi/constants.js';
 import { ApiIdentifier } from './values/api-identifier.js';
 
 /**
@@ -8,7 +9,7 @@ import { ApiIdentifier } from './values/api-identifier.js';
  * error constants.
  */
 export class ApiError extends ApiIdentifier {
-    [Symbol.toStringTag] = 'ApiError';
+    override [Symbol.toStringTag] = 'ApiError';
 
     /** @param identifier - An EDSDK error code. */
     constructor(identifier: number) {
@@ -16,7 +17,7 @@ export class ApiError extends ApiIdentifier {
     }
 
     /** Returns `true` when this error matches the given code or `ApiError`. */
-    equalTo(other: number | ApiError): boolean {
+    override equalTo(other: number | ApiError): boolean {
         return super.equalTo(+other);
     }
 
@@ -160,4 +161,38 @@ export class ApiError extends ApiIdentifier {
         TAKE_PICTURE_RETRUCTED_LENS_NG: 36111,
         OK: 0,
     } as const;
+}
+
+/**
+ * Error thrown when an EDSDK API call returns a non-OK status.
+ *
+ * The `EDS_ERROR` property carries the `ApiError` so callers can inspect the
+ * numeric code or label in `catch` blocks. Use {@link isEdsError} to narrow.
+ */
+export class EdsError extends Error {
+    /** The `ApiError` that describes the EDSDK failure. */
+    readonly EDS_ERROR: ApiError;
+
+    constructor(apiError: ApiError) {
+        super(`EDSDK error: ${apiError.label}`);
+        this.name = 'EdsError';
+        this.EDS_ERROR = apiError;
+    }
+}
+
+/** Returns `true` when `err` is an `EdsError` thrown by this library. */
+export function isEdsError(err: unknown): err is EdsError {
+    return err instanceof EdsError;
+}
+
+/** Throws an `EdsError` for `code`. */
+export function throwError(code: number): never {
+    throw new EdsError(new ApiError(code));
+}
+
+/** Throws an `EdsError` when `code` is not `EDS_ERR_OK`. */
+export function throwIfError(code: number): void {
+    if (code !== ErrorCode.OK) {
+        throwError(code);
+    }
 }

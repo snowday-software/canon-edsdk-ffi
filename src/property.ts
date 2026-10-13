@@ -2,7 +2,7 @@ import koffi from 'koffi';
 import { edsdk } from './ffi/functions.js';
 import { PropertyID, DataType, ErrorCode, SaveTo } from './ffi/constants.js';
 import { EdsTime, EdsPictureStyleDesc, EdsRational, EdsPropertyDesc, EdsPropertyDescEx } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
+import { throwIfError } from './api-error.js';
 import { Aperture } from './values/aperture.js';
 import { ShutterSpeed } from './values/shutter-speed.js';
 import { ISOSensitivity } from './values/iso-sensitivity.js';
@@ -14,23 +14,23 @@ import { Option } from './values/option.js';
 import { TimeZone } from './values/time-zone.js';
 import type { PropertyValue } from './values/property-value.js';
 
+/** Union of all canonical EDSDK property names (keys of `CameraProperty.ID`). */
+export type PropertyName = keyof typeof PropertyID;
+
 export interface ICamera {
     getEdsReference(): unknown;
 }
 
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
+/**
+ * The possible decoded forms of a property value: primitives, raw buffers,
+ * numeric arrays, decoded EDSDK structs, or a typed `PropertyValue` wrapper.
+ */
+export type PropertyData = string | number | bigint | number[] | bigint[] | Buffer | PropertyValue | object;
 
 function getPropertySize(ref: unknown, identifier: number, specifier: number): [number, number] {
     const dataType: [number] = [0];
     const size: [number] = [0];
-    throwIfError(edsdk.EdsGetPropertySize(ref as any, identifier, specifier, dataType, size));
+    throwIfError(edsdk.EdsGetPropertySize(ref, identifier, specifier, dataType, size));
     return [dataType[0], size[0]];
 }
 
@@ -65,7 +65,7 @@ function decodeString(buffer: Buffer): string {
     return buffer.toString('utf-8').split('\0')[0] ?? '';
 }
 
-function decodeBuffer(dataType: number, buffer: Buffer, size: number): any {
+function decodeBuffer(dataType: number, buffer: Buffer, size: number): PropertyData {
     switch (dataType) {
         case DataType.String:
             return decodeString(buffer);
@@ -126,7 +126,7 @@ function decodeBuffer(dataType: number, buffer: Buffer, size: number): any {
     }
 }
 
-function decodeProperty(propertyID: number, dataType: number, buffer: Buffer, size: number): any {
+function decodeProperty(propertyID: number, dataType: number, buffer: Buffer, size: number): PropertyData {
     if (dataType === DataType.String) {
         return decodeString(buffer);
     }
@@ -137,7 +137,7 @@ function decodeProperty(propertyID: number, dataType: number, buffer: Buffer, si
     return raw;
 }
 
-function encodeBuffer(dataType: number, value: any, size: number): Buffer {
+function encodeBuffer(dataType: number, value: unknown, size: number): Buffer {
     if (dataType === DataType.String) {
         const buf = Buffer.alloc(size);
         const str = String(value);
@@ -248,7 +248,7 @@ function encodeBuffer(dataType: number, value: any, size: number): Buffer {
     return buf;
 }
 
-function toRawValue(value: any): any {
+function toRawValue(value: unknown): unknown {
     if (value && typeof value === 'object') {
         if ('value' in value) {
             return value.value;
@@ -284,7 +284,7 @@ export class CameraProperty {
     /**
      * @param camera - The camera (or image) that owns this property.
      * @param identifier - An EDSDK property ID. Use names from
-     *   `CameraProperty.ID` for convenience.
+     *   `CameraProperty.ID` or pass the raw numeric ID.
      * @param specifier - Optional specifier for array-like properties.
      */
     constructor(
@@ -310,16 +310,16 @@ export class CameraProperty {
     }
 
     /** The current decoded property value. */
-    get value(): any {
+    get value(): PropertyData {
         const ref = this.camera.getEdsReference();
         const [dataType, size] = getPropertySize(ref, this.identifier, this.specifier);
         const out = Buffer.alloc(size);
-        throwIfError(edsdk.EdsGetPropertyData(ref as any, this.identifier, this.specifier, size, out));
+        throwIfError(edsdk.EdsGetPropertyData(ref, this.identifier, this.specifier, size, out));
         return decodeProperty(this.identifier, dataType, out, size);
     }
 
     /** Writes a new value for this property to the camera. */
-    set value(value: any) {
+    set value(value: unknown) {
         const ref = this.camera.getEdsReference();
         const [dataType, size] = getPropertySize(ref, this.identifier, this.specifier);
         let raw = toRawValue(value);
@@ -327,14 +327,14 @@ export class CameraProperty {
             raw = typeof raw === 'string' ? parseInt(raw, 10) : raw;
         }
         const inData = encodeBuffer(dataType, raw, size);
-        throwIfError(edsdk.EdsSetPropertyData(ref as any, this.identifier, this.specifier, size, inData));
+        throwIfError(edsdk.EdsSetPropertyData(ref, this.identifier, this.specifier, size, inData));
         if (this.identifier === PropertyID.SaveTo && raw === SaveTo.Host) {
             const capacity = {
                 numberOfFreeClusters: 0x7fffffff,
                 bytesPerSector: 0x1000,
                 reset: 1,
             };
-            throwIfError(edsdk.EdsSetCapacity(ref as any, capacity));
+            throwIfError(edsdk.EdsSetCapacity(ref, capacity));
         }
     }
 
@@ -344,28 +344,24 @@ export class CameraProperty {
      * Falls back to `EdsGetPropertyDescEx` for cameras that report more
      * elements than `EdsPropertyDesc` can hold (EDS_ERR_PROPERTIES_MISMATCH).
      */
-    get allowedValues(): any[] {
+    get allowedValues(): (PropertyValue | number)[] {
         const ref = this.camera.getEdsReference();
         const desc = koffi.alloc(EdsPropertyDesc, 1);
-        const status = edsdk.EdsGetPropertyDesc(ref as any, this.identifier, desc);
+        const status = edsdk.EdsGetPropertyDesc(ref, this.identifier, desc);
         if (status !== ErrorCode.OK) {
             koffi.free(desc);
             if (status !== ErrorCode.PROPERTIES_MISMATCH) {
                 throwIfError(status);
             }
             const descEx = koffi.alloc(EdsPropertyDescEx, 1);
-            throwIfError(edsdk.EdsGetPropertyDescEx(ref as any, this.identifier, descEx));
+            throwIfError(edsdk.EdsGetPropertyDescEx(ref, this.identifier, descEx));
             const { numElements, propDesc } = koffi.decode(descEx, 'EdsPropertyDescEx');
             koffi.free(descEx);
             return propDesc.slice(0, numElements).map((v: number | bigint) => wrapValue(this.identifier, Number(v)));
         }
         const { numElements, propDesc } = koffi.decode(desc, 'EdsPropertyDesc');
         koffi.free(desc);
-        const values: any[] = [];
-        for (let i = 0; i < numElements; i++) {
-            values.push(wrapValue(this.identifier, propDesc[i]));
-        }
-        return values;
+        return propDesc.slice(0, numElements).map((v: number | bigint) => wrapValue(this.identifier, Number(v)));
     }
 
     /** Returns a JSON-serializable summary of this property. */
@@ -373,8 +369,8 @@ export class CameraProperty {
         label: string;
         identifier: number;
         specifier: number;
-        value: any;
-        allowedValues: any[];
+        value: PropertyData;
+        allowedValues: (PropertyValue | number)[];
     } {
         return {
             label: this.label,
@@ -401,27 +397,14 @@ export class CameraProperty {
         if (/^\d+$/.test(label)) {
             return parseInt(label, 10);
         }
-        return CameraProperty.ID[label];
+        return (CameraProperty.ID as Record<string, number>)[label];
     }
 
     /**
-     * Record of all known EDSDK property IDs by name.
+     * Record of all known EDSDK property IDs by name (`kEdsPropID_*`).
      *
-     * Includes legacy aliases exposed by the original node-canon-edsdk API
-     * (e.g. `JpegQuality`, `PictureStyleDescription`) alongside the canonical
-     * `kEdsPropID_*` header names.
+     * Keeps the literal key type so typos are compile errors; use
+     * {@link CameraProperty.getIDFor} for dynamic name lookups.
      */
-    static readonly ID: Record<string, number> = {
-        ...(PropertyID as Record<string, number>),
-        // Legacy aliases kept for API compatibility
-        CFn: 9,
-        MyMenu: 14,
-        JpegQuality: 0x101,
-        EFCompensation: 0x408,
-        FlashCompensation: 0x408,
-        DepthOfField: 0x41b,
-        Evf_FocusAid: 0x509,
-        PictureStyleDescription: PropertyID.PictureStyleDesc,
-        TemperatureStatus: PropertyID.TempStatus,
-    };
+    static readonly ID = PropertyID;
 }

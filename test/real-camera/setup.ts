@@ -5,9 +5,9 @@ import EDSDK from '../../src/index.js';
 let camera: EDSDK.Camera | undefined;
 let stopWatcher: (() => void) | undefined;
 const events: { name: string; event: any }[] = [];
-const originalValues: Record<string, unknown> = {};
+const originalValues: Partial<Record<EDSDK.PropertyName, unknown>> = {};
 
-const snapshotProperties = ['SaveTo', 'WhiteBalance', 'ISOSpeed', 'Tv', 'Av', 'PictureStyle', 'Evf_OutputDevice'];
+const snapshotProperties = ['SaveTo', 'WhiteBalance', 'ISOSpeed', 'Tv', 'Av', 'PictureStyle', 'Evf_OutputDevice'] as const;
 
 function onEvent(name: string, event: any): void {
     events.push({ name, event });
@@ -69,7 +69,7 @@ export async function disconnectAndTerminate(): Promise<void> {
                 continue;
             }
             try {
-                const id = EDSDK.CameraProperty.ID[key];
+                const id = EDSDK.CameraProperty.getIDFor(key);
                 if (id !== undefined) {
                     camera.setProperty(id, value);
                 }

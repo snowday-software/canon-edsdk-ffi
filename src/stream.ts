@@ -9,16 +9,7 @@ import {
     EdsTellStream,
     EdsGetStreamLength,
 } from './ffi/definitions.js';
-import { ApiError } from './api-error.js';
-
-function throwIfError(code: number): void {
-    if (code !== ErrorCode.OK) {
-        const apiError = new ApiError(code);
-        const err = new Error(`EDSDK error: ${apiError.label}`) as any;
-        err.EDS_ERROR = apiError;
-        throw err;
-    }
-}
+import { throwIfError } from './api-error.js';
 
 function allocUInt64Out(): any {
     return koffi.alloc('uint64_t', 1);
@@ -54,7 +45,7 @@ export type ProgressCallback = (percent: number) => boolean | void;
 export class Stream {
     [Symbol.toStringTag] = 'Stream';
 
-    private ref_: any;
+    private ref_: unknown;
     private owned_: boolean;
     private progressCallback_?: bigint;
     private streamCallbacks_: bigint[] = [];
@@ -65,7 +56,7 @@ export class Stream {
     static readonly ProgressOption = ProgressOption;
 
     /** @param ref - An EDSDK stream reference. */
-    constructor(ref: any, owned = true) {
+    constructor(ref: unknown, owned = true) {
         this.ref_ = ref;
         this.owned_ = owned;
         if (owned) {
@@ -74,7 +65,7 @@ export class Stream {
     }
 
     /** Returns the underlying EDSDK stream reference. */
-    getEdsReference(): any {
+    getEdsReference(): unknown {
         return this.ref_;
     }
 
