@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import koffi from 'koffi';
 import { edsdk, createOutputPointer, readOutputPointer, freeOutputPointer } from './ffi/functions.js';
@@ -32,31 +31,6 @@ function getDirectoryItemInfo(ref: unknown): DirectoryItemInfo {
         return koffi.decode(ptr, 'EdsDirectoryItemInfo');
     } finally {
         koffi.free(ptr);
-    }
-}
-
-function readStreamToBase64(streamRef: any): string {
-    const lengthPtr = koffi.alloc('uint64_t', 1);
-    try {
-        throwIfError(edsdk.EdsGetLength(streamRef, lengthPtr));
-        const n = Number(koffi.decode(lengthPtr, 'uint64_t'));
-        if (n === 0) {
-            return '';
-        }
-        const buffer = Buffer.alloc(n);
-        const outReadPtr = koffi.alloc('uint64_t', 1);
-        try {
-            throwIfError(edsdk.EdsRead(streamRef, BigInt(n), buffer, outReadPtr));
-            const read = Number(koffi.decode(outReadPtr, 'uint64_t'));
-            if (read === 0) {
-                return '';
-            }
-            return buffer.toString('base64', 0, read);
-        } finally {
-            koffi.free(outReadPtr);
-        }
-    } finally {
-        koffi.free(lengthPtr);
     }
 }
 
@@ -254,43 +228,24 @@ export class CameraFile {
 
     /** Downloads the file into memory and returns it as a base64 string. */
     downloadToString(): string {
-        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-edsdk-'));
-        try {
-            const tmpPath = path.join(tmpDir, this.name);
-            const downloaded = this.downloadToFile(tmpPath);
-            const b64 = fs.readFileSync(downloaded).toString('base64');
-            this.isDownloaded_ = true;
-            return b64;
-        } finally {
-            try {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            } catch {
-                // ignore
-            }
-        }
+        return this.downloadToBuffer().toString('base64');
     }
 
-    /** Downloads the thumbnail into memory and returns it as a base64 string. */
+    /**
+     * Downloads the thumbnail into memory and returns it as a base64 string.
+     *
+     * EDSDK can reject this with `STREAM_SEEK_ERROR` for host-transfer
+     * items on some bodies.
+     */
     downloadThumbnailToString(): string {
-        const streamPtr = createOutputPointer();
+        const stream = Stream.inMemory(0);
         try {
-            throwIfError(edsdk.EdsCreateMemoryStream(0, streamPtr));
-            const stream = readOutputPointer(streamPtr);
-            throwIfError(edsdk.EdsDownloadThumbnail(this.ref_, stream));
+            throwIfError(edsdk.EdsDownloadThumbnail(this.ref_, stream.getEdsReference()));
             throwIfError(edsdk.EdsDownloadComplete(this.ref_));
-            const b64 = readStreamToBase64(stream);
             this.isDownloaded_ = true;
-            return b64;
+            return stream.readAll().toString('base64');
         } finally {
-            const stream = readOutputPointer(streamPtr);
-            freeOutputPointer(streamPtr);
-            if (stream !== 0n && stream !== null) {
-                try {
-                    edsdk.EdsRelease(stream);
-                } catch {
-                    // ignore
-                }
-            }
+            stream.dispose();
             this.dispose_();
         }
     }

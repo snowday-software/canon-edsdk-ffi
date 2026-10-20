@@ -69,6 +69,13 @@ export class Stream {
         return this.ref_;
     }
 
+    /** Takes ownership of a freshly created stream reference without an extra `EdsRetain`. */
+    private static adopt_(ref: unknown): Stream {
+        const stream = new Stream(ref, false);
+        stream.owned_ = true;
+        return stream;
+    }
+
     /** Creates a stream bound to a local file path (`EdsCreateFileStream`). */
     static openFile(
         filename: string,
@@ -78,7 +85,7 @@ export class Stream {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsCreateFileStream(filename, createDisposition, access, ptr));
-            return new Stream(readOutputPointer(ptr), false);
+            return Stream.adopt_(readOutputPointer(ptr));
         } finally {
             freeOutputPointer(ptr);
         }
@@ -102,7 +109,7 @@ export class Stream {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsCreateFileStreamEx(filename, createDisposition, access, ptr));
-            return new Stream(readOutputPointer(ptr), false);
+            return Stream.adopt_(readOutputPointer(ptr));
         } finally {
             freeOutputPointer(ptr);
         }
@@ -113,7 +120,7 @@ export class Stream {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsCreateMemoryStream(size, ptr));
-            return new Stream(readOutputPointer(ptr), false);
+            return Stream.adopt_(readOutputPointer(ptr));
         } finally {
             freeOutputPointer(ptr);
         }
@@ -124,7 +131,7 @@ export class Stream {
         const ptr = createOutputPointer();
         try {
             throwIfError(edsdk.EdsCreateMemoryStreamFromPointer(buffer, buffer.byteLength, ptr));
-            return new Stream(readOutputPointer(ptr), false);
+            return Stream.adopt_(readOutputPointer(ptr));
         } finally {
             freeOutputPointer(ptr);
         }

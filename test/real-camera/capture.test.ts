@@ -38,6 +38,28 @@ describe('still image capture', () => {
         const b64 = file.downloadToString();
         expect(b64.length).toBeGreaterThan(1000);
         expect(b64.startsWith('/9j/')).toBe(true);
+        expect(file.localFile).toBe('');
+    });
+
+    it('downloadThumbnailToString returns a base64 JPEG', async (ctx) => {
+        clearEvents();
+        getCamera().setProperty(EDSDK.CameraProperty.ID.SaveTo, EDSDK.Option.SaveTo.Host);
+        getCamera().takePicture();
+        const event = await waitForEvent('DownloadRequest', 30000);
+        const file = (event as EDSDK.FileChangeEvent).file;
+        let b64: string;
+        try {
+            b64 = file.downloadThumbnailToString();
+        } catch (err) {
+            // EOS 200D rejects EdsDownloadThumbnail on host-transfer items
+            // (STREAM_SEEK_ERROR); run only where the body supports it.
+            if (err instanceof Error && err.message.includes('STREAM_SEEK_ERROR')) {
+                ctx.skip();
+            }
+            throw err;
+        }
+        expect(b64.length).toBeGreaterThan(100);
+        expect(b64.startsWith('/9j/')).toBe(true);
     });
 
     it('downloadToFile writes the image to disk', async () => {
