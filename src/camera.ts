@@ -21,6 +21,7 @@ import {
     EvfOutputDevice,
 } from './ffi/constants.js';
 import { EdsDeviceInfo, EdsDirectoryItemInfo } from './ffi/definitions.js';
+import { pumpDeviceEvents } from './ffi/device-events.js';
 import { isEdsError, throwIfError, throwError, type ApiError } from './api-error.js';
 import { CameraProperty, type ICamera, type PropertyName } from './property.js';
 import { CameraFile } from './camera-file.js';
@@ -1033,6 +1034,10 @@ export function watchCameras(timeout = 1000): () => void {
     let running = true;
     const id = setInterval(() => {
         if (running) {
+            // device arrival/removal is delivered through platform event
+            // sources (CFRunLoop on macOS, Win32 messages on Windows) — they
+            // starve without a pumped event source, so service it first
+            pumpDeviceEvents();
             cameraBrowser.triggerEvents();
         }
     }, timeout);
