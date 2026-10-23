@@ -1,6 +1,6 @@
 {
     "name": "canon-edsdk-ffi",
-    "version": "0.5.2",
+    "version": "0.5.3",
     "description": "Modern TypeScript FFI wrapper for the Canon EOS Digital SDK (EDSDK), built with Koffi.",
     "main": "dist/index.cjs",
     "module": "dist/index.js",

@@ -33,7 +33,11 @@ function getEdsdkFileNames(): string[] {
         case 'win32':
             return ['EDSDK.dll'];
         case 'darwin':
-            return ['EDSDK', 'libEDSDK.dylib'];
+            // framework only: a bare EDSDK binary can never run — its
+            // signature seals the framework's Info.plist (dlopen fails) and
+            // the SDK resolves its own bundle during EdsInitializeSDK
+            // (segfaults without it)
+            return ['EDSDK.framework/Versions/A/EDSDK', 'EDSDK.framework/EDSDK'];
         case 'linux':
             return ['libEDSDK.so'];
         default:
@@ -86,7 +90,11 @@ function getEdsImageFileNames(): string[] {
         case 'win32':
             return ['EdsImage.dll'];
         case 'darwin':
-            return ['EdsImage', 'libEdsImage.dylib'];
+            return [
+                'EDSDK.framework/Versions/A/EdsImage.bundle/Contents/MacOS/EdsImage',
+                'EdsImage.bundle/Contents/MacOS/EdsImage',
+                'EdsImage.framework/EdsImage',
+            ];
         case 'linux':
             return ['libEdsImage.so'];
         default:

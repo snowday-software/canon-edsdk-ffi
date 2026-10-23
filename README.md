@@ -119,14 +119,26 @@ Only the current platform's file names are searched, so binaries for
 multiple platforms can coexist in `vendor/bin` without being picked up by
 the wrong loader:
 
-| Platform | EDSDK                     | EdsImage                        |
-| -------- | ------------------------- | ------------------------------- |
-| Windows  | `EDSDK.dll`               | `EdsImage.dll`                  |
-| Linux    | `libEDSDK.so`             | `libEdsImage.so`                |
-| macOS    | `EDSDK`, `libEDSDK.dylib` | `EdsImage`, `libEdsImage.dylib` |
+| Platform | EDSDK                                 | EdsImage                                                                   |
+| -------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| Windows  | `EDSDK.dll`                           | `EdsImage.dll`                                                             |
+| Linux    | `libEDSDK.so`                         | `libEdsImage.so`                                                           |
+| macOS    | `EDSDK.framework/{,Versions/A/}EDSDK` | `…/EdsImage.bundle/Contents/MacOS/EdsImage`, `EdsImage.framework/EdsImage` |
 
 `EdsImage` is a companion library used for camera image processing; it is
-optional and not shipped with the Linux SDK.
+optional and not shipped with the Linux SDK. On macOS it is searched inside
+`EDSDK.framework/Versions/A/EdsImage.bundle` first, since that is where the
+Macintosh SDK ships it.
+
+### macOS requires the framework bundle
+
+The macOS EDSDK cannot run as a bare binary: its code signature seals the
+framework's `Info.plist`, so a standalone copy fails `dlopen` with
+"code signature invalid", and the SDK resolves its own bundle at runtime —
+a flat `EDSDK` file crashes `EdsInitializeSDK`. Flat binaries are therefore
+not searched at all on macOS; keep the bundle layout (`EDSDK.framework/…`)
+produced by `vendor:sync`. `EDSDK_PATH` may point at the `EDSDK.framework`
+directory, a directory containing it, or the binary inside it.
 
 ## Vendor SDK layout
 
@@ -155,6 +167,11 @@ multi-platform artifact in CI. Windows (`EDSDK_64` vs `EDSDK`) and Linux
 machine running the script. The Linux SDK ships no `libEdsImage.so`, so that
 warning is expected. You can also copy the files into `vendor/bin/` manually
 instead of using the script.
+
+When a Macintosh SDK is extracted, `EDSDK.framework` is additionally copied
+into `vendor/bin/` wholesale — on macOS the SDK only works inside its
+bundle (see [Library discovery](#library-discovery)). The copy preserves
+Canon's original signature and directory structure.
 
 ## API overview
 
@@ -245,6 +262,6 @@ header-only `EdsCreateStream`/`EdsIStream` API. Platform caveats:
 | `test:camera`          | Run the test suite against a connected camera.       |
 | `vendor:sync`          | Extract SDK archives in `vendor/sdk` (including the  |
 |                        | macOS DMG) and copy all platforms' runtime libraries |
-|                        | to `vendor/bin`.                                     |
+|                        | to `vendor/bin`, plus `EDSDK.framework` on macOS.    |
 | `vendor:clean`         | Remove the mirrored `vendor/bin` directory.          |
 | `example:picture-test` | Run the take-a-picture example.                      |

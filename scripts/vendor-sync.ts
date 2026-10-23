@@ -127,12 +127,9 @@ function getCandidates(): { name: string; source: string }[] {
         { name: 'EdsImage.dll', source: `${winArch}/Dll/EdsImage.dll` },
         { name: 'libEDSDK.so', source: `EDSDK/Library/${linuxArch}/libEDSDK.so` },
         { name: 'libEdsImage.so', source: `EDSDK/Library/${linuxArch}/libEdsImage.so` },
-        { name: 'EDSDK', source: 'EDSDK.framework/Versions/A/EDSDK' },
-        { name: 'EDSDK', source: 'EDSDK.framework/EDSDK' },
-        { name: 'EDSDK', source: 'libEDSDK.dylib' },
-        { name: 'EdsImage', source: 'EdsImage.bundle/Contents/MacOS/EdsImage' },
-        { name: 'EdsImage', source: 'EdsImage.framework/EdsImage' },
-        { name: 'EdsImage', source: 'libEdsImage.dylib' },
+        // macOS binaries are intentionally not copied flat — they can only
+        // run inside their bundles; syncMacFramework vendors EDSDK.framework
+        // (with EdsImage.bundle inside) instead.
     ];
 }
 
@@ -166,6 +163,19 @@ function findFirstExisting(candidates: string[]): string | null {
     return null;
 }
 
+const MACHO_MAGICS = new Set([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe, 0xbebafeca]);
+
+function isMachO(filePath: string): boolean {
+    const fd = fs.openSync(filePath, 'r');
+    try {
+        const magic = Buffer.alloc(4);
+        fs.readSync(fd, magic, 0, 4, 0);
+        return MACHO_MAGICS.has(magic.readUInt32BE(0));
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
 function copyLibrary(name: string, source: string | null): void {
     if (!source) {
         console.warn(`Could not find source for ${name}.`);
@@ -177,6 +187,49 @@ function copyLibrary(name: string, source: string | null): void {
     fs.copyFileSync(source, dest, fs.constants.COPYFILE_FICLONE);
     fs.chmodSync(dest, 0o755);
     console.log(`Copied ${path.relative(process.cwd(), source)} -> ${path.relative(process.cwd(), dest)}`);
+}
+
+function findDirNamed(dir: string, name: string): string | null {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === '__MACOSX' || entry.name.startsWith('._')) {
+            continue;
+        }
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (entry.name === name) {
+                return full;
+            }
+            const hit = findDirNamed(full, name);
+            if (hit) {
+                return hit;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * The macOS EDSDK only works inside its bundle: its signature seals the
+ * framework's Info.plist (a bare copy fails dlopen with "code signature
+ * invalid") and the SDK looks up its own bundle at runtime. Copy
+ * EDSDK.framework wholesale — EdsImage.bundle ships inside it — preserving
+ * Canon's original signature.
+ */
+function syncMacFramework(): void {
+    const framework = listSdkDirs()
+        .map((dir) => findDirNamed(dir, 'EDSDK.framework'))
+        .find((hit) => hit !== null);
+    if (!framework) {
+        return;
+    }
+    const dest = path.join(BIN_ROOT, 'EDSDK.framework');
+    fs.cpSync(framework, dest, { recursive: true, verbatimSymlinks: true });
+    for (const file of walk(dest)) {
+        if (isMachO(file)) {
+            fs.chmodSync(file, 0o755);
+        }
+    }
+    console.log(`Copied ${path.relative(process.cwd(), framework)} -> ${path.relative(process.cwd(), dest)}`);
 }
 
 function main(): void {
@@ -212,6 +265,8 @@ function main(): void {
         seen.add(name);
         copyLibrary(name, findFirstExisting([source]));
     }
+
+    syncMacFramework();
 }
 
 main();
